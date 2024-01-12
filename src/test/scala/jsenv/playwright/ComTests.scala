@@ -6,7 +6,7 @@ import scala.concurrent.duration._
 
 
 class ComTests {
-  private val kit = new TestKit(new PWEnv("chrome"), 100.second)
+  private val kit = new TestKit(new PWEnv("webkit",false,showLogs=true), 100.second)
 
   @Test
   def basicTest: Unit = {

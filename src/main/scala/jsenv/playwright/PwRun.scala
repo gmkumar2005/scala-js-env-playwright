@@ -38,7 +38,7 @@ class PwRun(
   }
 
   val future: Future[Unit] = handler.andThen { case _ =>
-    PwRun.maybeCleanupDriver(driver, config)
+    PwRun.pageCleanup(driver, config)
     streams.close()
     materializer.close()
   }
@@ -146,7 +146,7 @@ private object PwRun {
       runConfig: RunConfig,
       enableCom: Boolean
   )(newRun: Ctor[T], failed: Throwable => T): T = {
-    scribe.info(s"Starting PWRun")
+    scribe.debug(s"Starting PWRun")
     validator.validate(runConfig)
 
     try {
@@ -155,7 +155,7 @@ private object PwRun {
         val fullInput = setupJsScript +: input
         val materialPage =
           m.materialize("scalajsRun.html", htmlPage(fullInput, m))
-        withCleanup(newDriver())(maybeCleanupDriver(_, config)) { driver =>
+        withCleanup(newDriver())(pageCleanup(_, config)) { driver =>
           driver.page.navigate(materialPage.toString)
           withCleanup(OutputStreams.prepare(runConfig))(_.close()) { streams =>
             newRun(driver, config, streams, m)
@@ -166,7 +166,7 @@ private object PwRun {
       case NonFatal(t) =>
         failed(t)
     } finally {
-      scribe.info("Finished PWRun")
+      scribe.debug("Finished PWRun")
     }
 
   }
@@ -184,12 +184,12 @@ private object PwRun {
     }
   }
 
-  private def maybeCleanupDriver(d: PWDriver, config: PWEnv.Config): Unit = {
+  private def pageCleanup(d: PWDriver, config: PWEnv.Config): Unit = {
 
     if (!config.keepAlive) {
-      scribe.info(s"Closing PWDriver.page for ${d.pw}")
+      scribe.info(s"Closing page ${d.page.hashCode()}")
       if (d.page.isClosed) {
-        scribe.info(s"Page is already closed")
+        scribe.debug(s"Page is already closed")
       } else {
         d.page.close()
       }

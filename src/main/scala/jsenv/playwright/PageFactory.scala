@@ -4,7 +4,7 @@ import com.microsoft.playwright.{Browser, BrowserContext, Page, Playwright}
 
 class PageFactory(browserName: String,headless:Boolean) extends AutoCloseable {
   val playwright: Playwright = Playwright.create()
-  scribe.debug(s"Created new playwright $playwright")
+//  scribe.debug(s"Created new playwright $playwright")
   val browser: Browser = browserName.toLowerCase match {
     case "chromium" | "chrome" =>
       playwright
@@ -25,7 +25,7 @@ class PageFactory(browserName: String,headless:Boolean) extends AutoCloseable {
   def getPage: Page = {
 
     val page = context.newPage()
-    scribe.debug(s"Created new page $page")
+//    scribe.debug(s"Created new page $page")
     page
   }
 

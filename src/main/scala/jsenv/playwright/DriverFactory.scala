@@ -13,9 +13,9 @@ case class PWDriver(
 )
 
 trait DriverFactory {
-  def buildPW(browserName: String): PWDriver
-  def buildPW(browserName: String, headless: Boolean): PWDriver
-  def buildPW(
+  def pageBuilder(browserName: String): PWDriver
+  def pageBuilder(browserName: String, headless: Boolean): PWDriver
+  def pageBuilder(
       browserName: String,
       headless: Boolean,
       launchOptions: LaunchOptions
@@ -26,10 +26,10 @@ trait DriverFactory {
 class DefaultDriverFactory extends DriverFactory {
   scribe.debug("Creating new DefaultDriverFactory and Playwright instance")
 
-  def buildPW(browserName: String): PWDriver = {
-    buildPW(browserName, headless = true)
+  def pageBuilder(browserName: String): PWDriver = {
+    pageBuilder(browserName, headless = true)
   }
-  override def buildPW(browserName: String, headless: Boolean): PWDriver = {
+  override def pageBuilder(browserName: String, headless: Boolean): PWDriver = {
     val launchOptions = browserName.toLowerCase match {
       case "chromium" | "chrome" =>
         new BrowserType.LaunchOptions()
@@ -53,16 +53,20 @@ class DefaultDriverFactory extends DriverFactory {
         new BrowserType.LaunchOptions()
           .setArgs(
             List(
-              "--disable-web-security"
+              "--disable-extensions",
+              "--disable-web-security",
+              "--allow-running-insecure-content",
+              "--disable-site-isolation-trials",
+              "--allow-file-access-from-files"
             ).asJava
           )
       case _ => throw new IllegalArgumentException("Invalid browser type")
     }
     launchOptions.setHeadless(headless)
-    buildPW(browserName, headless, launchOptions)
+    pageBuilder(browserName, headless, launchOptions)
   }
 
-  override def buildPW(
+  override def pageBuilder(
       browserName: String,
       headless: Boolean,
       launchOptions: LaunchOptions
@@ -83,6 +87,7 @@ class DefaultDriverFactory extends DriverFactory {
     val browser = browserType.launch(launchOptions.setHeadless(headless))
     val context = browser.newContext()
     val page = context.newPage()
+    scribe.info(s"Created new page ${page.hashCode()}")
     PWDriver(playwright, browser, context, page)
   }
 }

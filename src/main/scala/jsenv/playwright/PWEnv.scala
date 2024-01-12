@@ -1,28 +1,52 @@
 package jsenv.playwright
 
 import org.scalajs.jsenv._
-import scribe.format.{FormatterInterpolator, date, level, mdc, messages, position, threadName}
+import scribe.format.{FormatterInterpolator, date, level, mdc, messages, methodName, threadName}
 
 import java.net.{URI, URL}
 import java.nio.file.{Path, Paths}
 
-final class PWEnv(browserName: String, config: PWEnv.Config, headless: Boolean)
-    extends JSEnv {
+final class PWEnv(
+                   browserName: String,
+                   headless: Boolean,
+                   showLogs: Boolean = false,
+                   config: PWEnv.Config
+) extends JSEnv {
+//  private val formatter =
+//    formatter"$date [$threadName] $level $position - $messages$mdc"
+
   private val formatter =
-    formatter"$date [$threadName] $level $position - $messages$mdc"
-  scribe.Logger.root
-    .clearHandlers()
-    .withHandler(formatter = formatter)
-    .replace()
-  scribe.Logger.root.withMinimumLevel(scribe.Level.Debug).replace()
-  def this(capabilities: String) = {
-    this(capabilities, PWEnv.Config(), headless = true)
+    formatter"$date [$threadName] $level $methodName - $messages$mdc"
+
+  if (showLogs) {
+    scribe.Logger.root
+      .clearHandlers()
+      .withHandler(
+        formatter = formatter,
+        minimumLevel = Some(scribe.Level.Info)
+      )
+      .replace()
+    scribe.Logger.root.withMinimumLevel(scribe.Level.Info).replace()
+  } else {
+    scribe.Logger.root
+      .clearHandlers()
+      .withHandler(
+        formatter = formatter,
+        minimumLevel = Some(scribe.Level.Error)
+      )
+      .replace()
+    scribe.Logger.root.withMinimumLevel(scribe.Level.Error).replace()
+  }
+  def this(browserName: String) = {
+    this(browserName, headless = true,showLogs = false,PWEnv.Config())
   }
 
-  def this(capabilities: String, headless: Boolean) = {
-    this(capabilities, PWEnv.Config(), headless)
+  def this(browserName: String, headless: Boolean) = {
+    this(browserName, headless, showLogs = false,PWEnv.Config())
   }
-
+  def this(browserName: String, headless: Boolean, showLogs:Boolean) = {
+    this(browserName, headless, showLogs,PWEnv.Config())
+  }
   val name: String = s"PWEnv ($browserName)"
 
   def start(input: Seq[Input], runConfig: RunConfig): JSRun =
@@ -38,7 +62,7 @@ final class PWEnv(browserName: String, config: PWEnv.Config, headless: Boolean)
   private def newDriver(): PWDriver = {
     // Use custom DriverJar when initializing playwright
     System.setProperty("playwright.driver.impl", "jsenv.DriverJar")
-    config.driverFactory.buildPW(browserName, headless)
+    config.driverFactory.pageBuilder(browserName, headless)
   }
 }
 

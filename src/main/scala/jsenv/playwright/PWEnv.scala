@@ -1,16 +1,20 @@
 package jsenv.playwright
 
-import com.microsoft.playwright.Page
+import com.microsoft.playwright.{Browser, BrowserContext, Page, Playwright}
 import org.scalajs.jsenv._
 
 import java.net.{URI, URL}
 import java.nio.file.{Path, Paths}
 
-final class PWEnv(capabilities: String, config: PWEnv.Config) extends JSEnv {
+final class PWEnv(browserName: String, config: PWEnv.Config, headless:Boolean) extends JSEnv {
   def this(capabilities: String) =
-    this(capabilities, PWEnv.Config())
+    this(capabilities, PWEnv.Config(),headless= true)
 
-  val name: String = s"PWEnv ($capabilities)"
+  def this(capabilities: String,headless:Boolean) = {
+    this(capabilities, PWEnv.Config(),headless)
+  }
+
+  val name: String = s"PWEnv ($browserName)"
 
   def start(input: Seq[Input], runConfig: RunConfig): JSRun =
     PwRun.start(newDriver _, input, config, runConfig)
@@ -23,12 +27,9 @@ final class PWEnv(capabilities: String, config: PWEnv.Config) extends JSEnv {
     PwRun.startWithCom(newDriver _, input, config, runConfig, onMessage)
 
   private def newDriver(): Page = {
+    // Use custom DriverJar when initializing playwright
     System.setProperty("playwright.driver.impl", "jsenv.DriverJar")
-    val driver: Page = {
-      config.driverFactory.newInstance("chromium")
-    }
-
-    driver
+    config.driverFactory.newInstance(browserName, headless)
   }
 }
 
@@ -126,7 +127,7 @@ object PWEnv {
       final case class Server(contentDir: Path, webRoot: URL)
           extends Materialization {
         require(
-          webRoot.getPath().endsWith("/"),
+          webRoot.getPath.endsWith("/"),
           "webRoot must end with a slash (/)"
         )
       }

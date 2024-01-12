@@ -88,20 +88,13 @@ private final class PwComRun(
 
   def send(msg: String): Unit = sendQueue.offer(msg)
 
-  override protected def receivedMessage(msg: String) = onMessage(msg)
+  override protected def receivedMessage(msg: String): Unit = onMessage(msg)
 
   @tailrec
   override protected def sendAll(): Unit = {
-    //    this.scalajsSeleniumInternalInterface.send(arguments[0]);
     val msg = sendQueue.poll()
     if (msg != null) {
       val script = s"$intf.send(arguments[0]);"
-//      println(s"script: $script")
-//      driver.evaluate(s"$intf.send($msg);", msg)
-//      function myFunction(arg) {
-//  this.scalajsSeleniumInternalInterface.send(arguments[0]);
-//}
-
       val wrapper = s"function(arg) { $script }"
       driver.evaluate(s"$wrapper", msg)
       sendAll()
@@ -190,8 +183,10 @@ private object PwRun {
     }
   }
 
-  private def maybeCleanupDriver(d: Page, config: PWEnv.Config) =
+  private def maybeCleanupDriver(d: Page, config: PWEnv.Config): Unit = {
+
     if (!config.keepAlive) d.close()
+  }
 
   private def htmlPage(
       fullInput: Seq[Input],

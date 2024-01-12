@@ -12,5 +12,5 @@ lazy val root = (project in file("."))
       "org.scala-js" %% "scalajs-js-envs-test-kit" % "1.1.1" % Test,
       "com.novocode" % "junit-interface" % "0.11" % Test
     ),
-    Test / parallelExecution := true,
+    Test / parallelExecution := false,
   )

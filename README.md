@@ -32,3 +32,6 @@ Test / jsEnv := new PWEnv(
 * Optimize to use a single browser instance for all tests by creating multiple tabs
 * Configure github actions to test this project
 * Configure github actions to publish to maven central
+* Verify debug mode works
+* Verify other test frameworks work
+* Verify it works on windows and Linux

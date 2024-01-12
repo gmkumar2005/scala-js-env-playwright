@@ -10,12 +10,6 @@ final class PWEnv(capabilities: String, config: PWEnv.Config) extends JSEnv {
   def this(capabilities: String) =
     this(capabilities, PWEnv.Config())
 
-//  private val augmentedCapabilities = {
-//    val x = new DesiredCapabilities(capabilities)
-//    x.setJavascriptEnabled(true)
-//    x
-//  }
-
   val name: String = s"PWEnv ($capabilities)"
 
   def start(input: Seq[Input], runConfig: RunConfig): JSRun =
@@ -29,9 +23,11 @@ final class PWEnv(capabilities: String, config: PWEnv.Config) extends JSEnv {
     PwRun.startWithCom(newDriver _, input, config, runConfig, onMessage)
 
   private def newDriver(): Page = {
+    System.setProperty("playwright.driver.impl", "jsenv.DriverJar")
     val driver: Page = {
       config.driverFactory.newInstance("chromium")
     }
+
     driver
   }
 }
@@ -54,7 +50,7 @@ object PWEnv {
       *
       * Materialization is necessary so that virtual files can be referred to by
       * name. If you do not know/care how your files are referred to, this is a
-      * good default choice. It is also the default of [[SeleniumJSEnv.Config]].
+      * good default choice. It is also the default of [[PWEnv.Config]].
       */
     def withMaterializeInTemp: Config =
       copy(materialization = Materialization.Temp)

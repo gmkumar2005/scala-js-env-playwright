@@ -2,9 +2,9 @@ package jsenv.playwright
 
 import java.net._
 import java.nio.file._
-import java.util.Arrays
+import java.util
 
-abstract class FileMaterializer {
+abstract class FileMaterializer extends AutoCloseable{
   private val tmpSuffixRE = """[a-zA-Z0-9-_.]*$""".r
 
   private var tmpFiles: List[Path] = Nil
@@ -17,7 +17,7 @@ abstract class FileMaterializer {
 
   final def materialize(name: String, content: String): URL = {
     val tmp = newTmp(name)
-    Files.write(tmp, Arrays.asList(content))
+    Files.write(tmp, util.Arrays.asList(content))
     toURL(tmp)
   }
 
@@ -59,7 +59,7 @@ private class TempDirFileMaterializer extends FileMaterializer {
     }
   }
 
-  protected def createTmp(suffix: String) = Files.createTempFile(null, suffix)
+  protected def createTmp(suffix: String): Path = Files.createTempFile(null, suffix)
   protected def toURL(file: Path): URL = file.toUri.toURL
 }
 
@@ -67,7 +67,7 @@ private class ServerDirFileMaterializer(contentDir: Path, webRoot: URL)
     extends FileMaterializer {
   Files.createDirectories(contentDir)
 
-  protected def createTmp(suffix: String) =
+  protected def createTmp(suffix: String): Path =
     Files.createTempFile(contentDir, null, suffix)
 
   protected def toURL(file: Path): URL = {

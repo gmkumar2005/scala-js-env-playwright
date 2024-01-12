@@ -1,6 +1,5 @@
 package jsenv.playwright
 
-import com.microsoft.playwright.Page
 import jsenv.playwright.PWEnv.Config
 import org.scalajs.jsenv._
 
@@ -12,7 +11,7 @@ import scala.concurrent._
 import scala.util.control.NonFatal
 
 class PwRun(
-    driver: Page,
+    driver: PWDriver,
     config: Config,
     streams: OutputStreams.Streams,
     materializer: FileMaterializer
@@ -49,7 +48,7 @@ class PwRun(
   private final def fetchAndProcess(): Unit = {
     import PwRun.consumer
 
-    val data = driver
+    val data = driver.page
       .evaluate(s"$intf.fetch();")
       .asInstanceOf[java.util.Map[String, java.util.List[String]]]
 
@@ -66,7 +65,7 @@ class PwRun(
   }
 
   private final def isInterfaceUp() =
-    driver.evaluate(s"!!$intf;").asInstanceOf[Boolean]
+    driver.page.evaluate(s"!!$intf;").asInstanceOf[Boolean]
 
   // Hooks for SeleniumComRun.
 
@@ -77,7 +76,7 @@ class PwRun(
 }
 
 private final class PwComRun(
-    driver: Page,
+    driver: PWDriver,
     config: PWEnv.Config,
     streams: OutputStreams.Streams,
     materializer: FileMaterializer,
@@ -96,7 +95,7 @@ private final class PwComRun(
     if (msg != null) {
       val script = s"$intf.send(arguments[0]);"
       val wrapper = s"function(arg) { $script }"
-      driver.evaluate(s"$wrapper", msg)
+      driver.page.evaluate(s"$wrapper", msg)
       sendAll()
     }
   }
@@ -106,8 +105,6 @@ private object PwRun {
   import OutputStreams.Streams
   import PWEnv.Config
 
-//  type Page = Page
-
   private lazy val validator = {
     RunConfig
       .Validator()
@@ -116,19 +113,19 @@ private object PwRun {
   }
 
   def start(
-      newDriver: () => Page,
+      newDriver: () => PWDriver,
       input: Seq[Input],
       config: Config,
       runConfig: RunConfig
   ): JSRun = {
     startInternal(newDriver, input, config, runConfig, enableCom = false)(
       new PwRun(_, _, _, _),
-      JSRun.failed _
+      JSRun.failed
     )
   }
 
   def startWithCom(
-      newDriver: () => Page,
+      newDriver: () => PWDriver,
       input: Seq[Input],
       config: Config,
       runConfig: RunConfig,
@@ -136,29 +133,30 @@ private object PwRun {
   ): JSComRun = {
     startInternal(newDriver, input, config, runConfig, enableCom = true)(
       new PwComRun(_, _, _, _, onMessage),
-      JSComRun.failed _
+      JSComRun.failed
     )
   }
 
-  private type Ctor[T] = (Page, Config, Streams, FileMaterializer) => T
+  private type Ctor[T] = (PWDriver, Config, Streams, FileMaterializer) => T
 
   private def startInternal[T](
-      newDriver: () => Page,
+      newDriver: () => PWDriver,
       input: Seq[Input],
       config: Config,
       runConfig: RunConfig,
       enableCom: Boolean
   )(newRun: Ctor[T], failed: Throwable => T): T = {
+    scribe.info(s"Starting PWRun")
     validator.validate(runConfig)
 
     try {
       withCleanup(FileMaterializer(config.materialization))(_.close()) { m =>
         val setupJsScript = Input.Script(JSSetup.setupFile(enableCom))
         val fullInput = setupJsScript +: input
-        val page = m.materialize("scalajsRun.html", htmlPage(fullInput, m))
+        val materialPage =
+          m.materialize("scalajsRun.html", htmlPage(fullInput, m))
         withCleanup(newDriver())(maybeCleanupDriver(_, config)) { driver =>
-          driver.navigate(page.toString)
-
+          driver.page.navigate(materialPage.toString)
           withCleanup(OutputStreams.prepare(runConfig))(_.close()) { streams =>
             newRun(driver, config, streams, m)
           }
@@ -167,7 +165,10 @@ private object PwRun {
     } catch {
       case NonFatal(t) =>
         failed(t)
+    } finally {
+      scribe.info("Finished PWRun")
     }
+
   }
 
   private def withCleanup[V, R](
@@ -183,9 +184,20 @@ private object PwRun {
     }
   }
 
-  private def maybeCleanupDriver(d: Page, config: PWEnv.Config): Unit = {
+  private def maybeCleanupDriver(d: PWDriver, config: PWEnv.Config): Unit = {
 
-    if (!config.keepAlive) d.close()
+    if (!config.keepAlive) {
+      scribe.info(s"Closing PWDriver.page for ${d.pw}")
+      if (d.page.isClosed) {
+        scribe.info(s"Page is already closed")
+      } else {
+        d.page.close()
+      }
+      d.context.close()
+      d.browser.close()
+      d.pw.close()
+    }
+
   }
 
   private def htmlPage(

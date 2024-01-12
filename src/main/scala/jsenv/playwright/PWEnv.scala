@@ -1,16 +1,27 @@
 package jsenv.playwright
 
-import com.microsoft.playwright.{Browser, BrowserContext, Page, Playwright}
 import org.scalajs.jsenv._
+import scribe.format.{FormatterInterpolator, date, level, mdc, messages, position, threadName}
+import scribe.Level
 
 import java.net.{URI, URL}
 import java.nio.file.{Path, Paths}
 
 final class PWEnv(browserName: String, config: PWEnv.Config, headless:Boolean) extends JSEnv {
-  def this(capabilities: String) =
+  private val formatter = formatter"$date [$threadName] $level $position - $messages$mdc"
+  scribe.Logger.root.clearHandlers().withHandler(formatter = formatter,minimumLevel = Some(Level.Error)).replace()
+
+  def apply(browserName: String): PWEnv = {
+    scribe.info("Created PWENv")
+    this(browserName)
+  }
+
+  def this(capabilities: String) = {
     this(capabilities, PWEnv.Config(),headless= true)
+  }
 
   def this(capabilities: String,headless:Boolean) = {
+
     this(capabilities, PWEnv.Config(),headless)
   }
 
@@ -26,14 +37,15 @@ final class PWEnv(browserName: String, config: PWEnv.Config, headless:Boolean) e
   ): JSComRun =
     PwRun.startWithCom(newDriver _, input, config, runConfig, onMessage)
 
-  private def newDriver(): Page = {
+  private def newDriver(): PWDriver = {
     // Use custom DriverJar when initializing playwright
     System.setProperty("playwright.driver.impl", "jsenv.DriverJar")
-    config.driverFactory.newInstance(browserName, headless)
+    config.driverFactory.buildPW(browserName)
   }
 }
 
 object PWEnv {
+
   final class Config private (
       val driverFactory: DriverFactory,
       val keepAlive: Boolean,

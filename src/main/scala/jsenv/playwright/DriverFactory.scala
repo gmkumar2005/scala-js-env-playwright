@@ -39,7 +39,8 @@ class DefaultDriverFactory extends DriverFactory {
               "--disable-web-security",
               "--allow-running-insecure-content",
               "--disable-site-isolation-trials",
-              "--allow-file-access-from-files"
+              "--allow-file-access-from-files",
+              "--disable-gpu"
             ).asJava
           )
       case "firefox" =>

@@ -22,13 +22,33 @@ Test / jsEnv := new PWEnv(
     // For Scala.js 1.x
     scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.ESModule) }
     ```
+* Some projects which may need to use both Selenium and Playwright may run into google execption. To resolve this, add the following line to your `plugins.sbt` 
+```scala
+libraryDependencies += "com.google.guava" % "guava" % "33.0.0-jre"
+```
 
+## KeepAlive configuration 
+```scala
+lazy val pwenvConfig = Def.setting {
+  jsenv.playwright.PWEnv
+    .Config()
+    .withKeepAlive(false)
+}
+
+jsEnv := new jsenv.playwright.PWEnv(
+  browserName = "chrome",
+  headless = true,
+  showLogs = true,
+  pwenvConfig.value,
+)
+
+```
 ## References
 * Sample project using this JSEnv: https://github.com/gmkumar2005/scalajs-sbt-vite-laminar-chartjs-example
 
 ## Todo 
 * Add examples to demonstrate how to use LaunchOptions
-* Add feature to keepAlive the browser
+* ~~Add feature to keepAlive the browser~~
 * Optimize to use a single browser instance for all tests by creating multiple tabs
 * Configure github actions to test this project
 * Configure github actions to publish to maven central

@@ -5,5 +5,5 @@ import org.scalajs.jsenv.test._
 
 @RunWith(classOf[JSEnvSuiteRunner])
 class PWSuite extends JSEnvSuite(
-  JSEnvSuiteConfig(new PWEnv("chrome"))
+  JSEnvSuiteConfig(new PWEnv("chrome",headless = true,showLogs=false))
 )

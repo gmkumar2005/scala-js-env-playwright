@@ -4,7 +4,7 @@ A JavaScript environment for Scala.js (a JSEnv) running playwright
 Add the following line to your `project/plugins.sbt` 
 ```scala
 // For Scala.js 1.x
-libraryDependencies += "github.gmkumar2005" %% "scala-js-env-playwright" % "0.1.0-SNAPSHOT"
+libraryDependencies += "io.github.gmkumar2005" %% "scala-js-env-playwright" % "0.1.2-SNAPSHOT"
 ```
 Add the following line to your `build.sbt` 
 ```scala

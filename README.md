@@ -1,3 +1,5 @@
+Build status [![Scala CI](https://github.com/gmkumar2005/scala-js-env-playwright/actions/workflows/scala.yml/badge.svg)](https://github.com/gmkumar2005/scala-js-env-playwright/actions/workflows/scala.yml)
+
 # scala-js-env-playwright
 A JavaScript environment for Scala.js (a JSEnv) running playwright
 ## Usage

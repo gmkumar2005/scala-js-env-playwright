@@ -1,22 +1,24 @@
 import sbtrelease.ReleasePlugin.autoImport.ReleaseTransformations.*
 import xerial.sbt.Sonatype.*
-ThisBuild / organization := "io.github.gmkumar2005"
-ThisBuild / scalaVersion := "2.12.18"
-ThisBuild / sonatypeProfileName := "com.github.gmkumar2005"
-ThisBuild / licenses := Seq(
+organization := "io.github.gmkumar2005"
+organizationName := "io.github.gmkumar2005"
+scalaVersion := "2.12.18"
+sonatypeProfileName := "io.github.gmkumar2005"
+licenses := Seq(
   "APL2" -> url("http://www.apache.org/licenses/LICENSE-2.0.txt")
 )
-ThisBuild / sonatypeProjectHosting := Some(
+sonatypeProjectHosting := Some(
   GitHubHosting("gmkumar2005", "scala-js-env-playwright", "info@akkagrpc.com")
 )
-ThisBuild / homepage := Some(url("https://www.akkagrpc.com"))
-ThisBuild / scmInfo := Some(
+homepage := Some(url("https://www.akkagrpc.com"))
+organizationHomepage := Some(url("https://www.akkagrpc.com"))
+scmInfo := Some(
   ScmInfo(
     url("https://github.com/gmkumar2005/scala-js-env-playwright"),
     "scm:git@github.com:gmkumar2005/scala-js-env-playwright.git"
   )
 )
-ThisBuild / developers := List(
+developers := List(
   Developer(
     id = "gmkumar2005",
     name = "Kiran Kumar",
@@ -57,7 +59,9 @@ lazy val root = (project in file("."))
     sonatypeCredentialHost := "s01.oss.sonatype.org",
     pomExtra := _pomExtra,
     Test / parallelExecution := false,
-    Test / publishArtifact := false
+    Test / publishArtifact := false,
+//    sonatypeRepository := "https://oss.sonatype.org/service/local"
+    sonatypeRepository := "https://s01.oss.sonatype.org/service/local"
   )
 
 val _pomExtra =

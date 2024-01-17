@@ -4,6 +4,7 @@ organization := "io.github.gmkumar2005"
 organizationName := "io.github.gmkumar2005"
 scalaVersion := "2.12.18"
 sonatypeProfileName := "io.github.gmkumar2005"
+versionScheme := Some("early-semver")
 licenses := Seq(
   "APL2" -> url("http://www.apache.org/licenses/LICENSE-2.0.txt")
 )

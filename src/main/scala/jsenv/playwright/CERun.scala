@@ -2,31 +2,28 @@ package jsenv.playwright
 
 import cats.effect.unsafe.implicits.global
 import cats.effect.{IO, Resource}
-import com.microsoft.playwright.{Browser, BrowserType, Page, Playwright}
 import jsenv.playwright.PWEnv.Config
+import jsenv.playwright.ResourcesFactory._
 import org.scalajs.jsenv.{Input, JSComRun, JSRun, RunConfig}
 
 import java.util
-import java.util.concurrent.Executors
-import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.atomic.AtomicBoolean
 import scala.concurrent._
 import scala.concurrent.duration.DurationInt
-import scala.jdk.CollectionConverters.{asScalaBufferConverter, seqAsJavaListConverter}
 
 class CERun(
     pwConfig: Config,
-    streams: OutputStreams.Streams,
+    runConfig: RunConfig,
     input: Seq[Input]
 ) extends JSRun {
 
-//  FileMaterializer(pwConfig.materialization)
-//  implicit val ec: scala.concurrent.ExecutionContext =
-//    scala.concurrent.ExecutionContext.global
-  private[this] implicit val ec =
-    ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
+  implicit val ec: scala.concurrent.ExecutionContext =
+    scala.concurrent.ExecutionContext.global
 
-//  @volatile
-//  private[this] var wantClose = false
+//  private[this] implicit val ec =
+//    ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
+
   val headlessConfig = true
   protected val intf = "this.scalajsSeleniumInternalInterface"
   System.setProperty("playwright.driver.impl", "jsenv.DriverJar")
@@ -41,12 +38,6 @@ class CERun(
     * termination of a [[JSRun]] without any external means of stopping it (i.e.
     * calling [[close]]).
     */
-  @volatile
-  var execCounter = new AtomicInteger(0)
-  @volatile
-  var endCounter = new AtomicInteger(0)
-
-
   var wantToClose = new AtomicBoolean(false)
   // List of programs
   // 1. isInterfaceUp()
@@ -64,234 +55,42 @@ class CERun(
   // If want to close then close driver, streams, materializer
   // After future is completed close driver, streams, materializer
 
-  def evalutionResponse: Resource[IO, String] =
-    Resource.make {
-      IO("Hello World\n") // build
-    } { outStream =>
-      IO {
-        scribe.info("Closing the response stream")
-      }.handleErrorWith(_ => {
-        scribe.info("Error in closing the stream")
-        IO.unit
-      }) // release
-    }
-
-  def outputStream: Resource[IO, OutputStreams.Streams] =
-    Resource.make {
-      IO.blocking(streams) // build
-    } { outStream =>
-      IO {
-        scribe.debug(s"Closing the stream ${outStream.hashCode()}")
-        outStream.close()
-      }.handleErrorWith(_ => {
-        scribe.debug(s"Error in closing the stream ${outStream.hashCode()})")
-        IO.unit
-      }) // release
-    }
-
-  val launchOptions: BrowserType.LaunchOptions = new BrowserType.LaunchOptions()
-    .setArgs(
-      List(
-        "--disable-extensions",
-        "--disable-web-security",
-        "--allow-running-insecure-content",
-        "--disable-site-isolation-trials",
-        "--allow-file-access-from-files",
-        "--disable-gpu"
-      ).asJava
+  private def jsRunPrg: Resource[IO, Unit] = for {
+    _ <- Resource.pure(scribe.info(s"Begin Main JSRun!"))
+    pageInstance <- createPage(headlessConfig)
+    _ <- preparePageForJsRun(
+      pageInstance,
+      materializer(pwConfig),
+      input,
+      enableCom = false
     )
-  def playwrightResource: Resource[IO, Playwright] =
-    Resource.make(IO {
-      scribe.info("Creating playwright")
-      Playwright.create()
-    })(pw =>
-      IO {
-        scribe.info("Closing playwright")
-        pw.close()
-      }
-    )
-  def browserResource(playwright: Playwright): Resource[IO, Browser] =
-    Resource.make(IO {
-      scribe.info("Creating browser")
-      playwright.chromium().launch(launchOptions.setHeadless(headlessConfig))
-    })(browser =>
-      IO {
-        scribe.info("Closing browser")
-        browser.close()
-      }
-    )
-  def pageResource(
-      browser: Browser
-  ): Resource[IO, Page] =
-    Resource.make(IO {
-      val pg = browser.newContext().newPage()
-      scribe.info(s"Creating page ${pg.hashCode()}")
-      pg
-    })(page =>
-      IO {
-        scribe.info(s"Closing page ${page.hashCode()}")
-        page.close()
-      }
-    )
-
-  def createPage(wantToClose: Boolean): Resource[IO, Option[Page]] = {
-    if (wantToClose) {
-      Resource.pure[IO, Option[Page]](None)
-    } else {
-      for {
-        playwright <- playwrightResource
-        browser <- browserResource(playwright)
-        page <- pageResource(browser)
-      } yield Some(page)
-    }
-  }
-
-//  def createPage: Resource[IO, Option[Page]] = {
-//
-//  }
-
-  def isConnectionUp(
-      pageInstanceOption: Option[Page]
-  ): Resource[IO, Boolean] = {
-    pageInstanceOption match {
-      case Some(pageInstance) =>
-        isConnectionUp(pageInstance)
-      case None => Resource.pure[IO, Boolean](false)
-    }
-  }
-  def isConnectionUp(pageInstance: Page): Resource[IO, Boolean] = {
-
-    Resource.make {
-      IO {
-        scribe.info(s"Page instance is ${pageInstance.hashCode()}")
-//        pageInstance.evaluate(s"true;").asInstanceOf[Boolean]
-        pageInstance.evaluate(s"!!$intf;").asInstanceOf[Boolean]
-      }
-    }(_ => IO.unit)
-  }
-
-  def streamWriter(data: String) = for {
-    out <- outputStream
-    _ <- Resource.pure(out.out.write(data.getBytes()))
-  } yield ()
-
-  def streamOutWriter(data: util.List[String]) = for {
-    out <- outputStream
-    _ <- Resource.pure(data.forEach(out.out.println _))
-  } yield ()
-  def streamErrWriter(data: util.List[String]) = for {
-    out <- outputStream
-    _ <- Resource.pure(data.forEach(out.err.println _))
-  } yield ()
-
-  def materializerResource: Resource[IO, FileMaterializer] =
-    Resource.make {
-      IO.blocking(FileMaterializer(pwConfig.materialization)) // build
-    } { fileMaterializer =>
-      IO {
-        scribe.info("Closing the fileMaterializer")
-        fileMaterializer.close()
-      }.handleErrorWith(_ => {
-        scribe.info("Error in closing the fileMaterializer")
-        IO.unit
-      }) // release
-    }
-
-  def preparePageForJsRun(pageInstance: Option[Page]): Resource[IO, Unit] = pageInstance match {
-    case Some(pageInstance) =>
-      for {
-        m <- materializerResource
-        _ <- Resource.pure(
-          scribe.info(s"Page instance is ${pageInstance.hashCode()}")
-        )
-        _ <- Resource.pure {
-          val setupJsScript = Input.Script(JSSetup.setupFile(false))
-          val fullInput = setupJsScript +: input
-          val materialPage =
-            m.materialize("scalajsRun.html", CEPageUtils.htmlPage(fullInput, m))
-          pageInstance.navigate(materialPage.toString)
-        }
-      } yield ()
-    case None =>
-      Resource.pure[IO, Unit](None)
-//      Resource.pure(())
-  }
-
-  // fetch and process
-
-  def fetchMessages(
-      pageInstance: Page
-  ): Resource[IO, util.Map[String, util.List[String]]] = {
-    Resource.make {
-      IO {
-        scribe.info(s"Page instance is ${pageInstance.hashCode()}")
-        val data = pageInstance
-          .evaluate(s"$intf.fetch();")
-          .asInstanceOf[java.util.Map[String, java.util.List[String]]]
-        data
-      }
-    }(_ => IO.unit)
-  }
-
-  def fetchMessages(
-      pageInstanceOption: Option[Page]
-  ): Resource[IO, util.Map[String, util.List[String]]] =
-    pageInstanceOption match {
-      case Some(pageInstance) => fetchMessages(pageInstance)
-      case None =>
-        Resource.pure[IO, util.Map[String, util.List[String]]](
-          new util.HashMap[String, util.List[String]]()
-        )
-    }
-
-  val atomicMainCounter = new java.util.concurrent.atomic.AtomicInteger(0)
-  def mainPrg = for {
-    _ <- Resource.pure(scribe.info(s"Begin Main! ${atomicMainCounter.incrementAndGet()}"))
-    _ <- Resource.pure(scribe.info(s"wantToClose1 is ${wantToClose.get()}"))
-    pageInstanceOption  <- createPage(wantToClose.get())
-    _ <- Resource.pure(scribe.info(s"wantToClose2 is ${wantToClose.get()}"))
-    // Prepare page for scriptJSSetup
-    _ <- preparePageForJsRun(pageInstanceOption)
-    initialStatus <- isConnectionUp(pageInstanceOption)
-//    _ <- if(initialStatus) Resource.pure[IO, Unit](IO.sleep(1.second)) else Resource.pure[IO, Unit](IO.unit)
-    jsResponse <- fetchMessages(pageInstanceOption)
+    initialStatus <- isConnectionUp(pageInstance, intf)
+    _ <-
+      if (!initialStatus) Resource.pure[IO, Unit](IO.sleep(100.milliseconds))
+      else Resource.pure[IO, Unit](IO.unit)
+    _ <- isConnectionUp(pageInstance, intf)
+    jsResponse <- fetchMessages(pageInstance, intf)
     _ <- Resource.pure(scribe.info(s"jsResponse is $jsResponse"))
-    _ <- streamOutWriter(jsResponse.get("consoleLog"))
-//    proceeErrors <- Resource.pure(jsResponse.get("consoleError").asInstanceOf[util.List[String]])
-    // sendAll()
-    // fetchAndProcess()
-//    data <- evalutionResponse
-//    _ <- streamWriter(data)
+    _ <- streamWriter(jsResponse, runConfig)
   } yield {
-    val processErrors = jsResponse.get("errors").asInstanceOf[util.List[String]]
-    scribe.info(s"Closing the main program inside yield ${processErrors}")
+    handleErrors(jsResponse)
+  }
 
-    if (!processErrors.isEmpty) {
+  def handleErrors(
+      jsResponse: util.Map[String, util.List[String]]
+  ): Unit = {
+    val processErrors = jsResponse.get("errors")
+    val processConsoleErrors = jsResponse.get("consoleError")
+    if (!processErrors.isEmpty || !processConsoleErrors.isEmpty) {
       scribe.info("Closing the main program inside yield with errors")
-      JSRun.failed(new WindowOnErrorException(processErrors.asScala.toList))
       throw new WindowOnErrorException(
-        processErrors.toArray(Array[String]()).toList
+        processErrors.toArray(Array[String]()).toList ++
+          processConsoleErrors.toArray(Array[String]()).toList
       )
     }
   }
 
-
-  val atomicFutureCounter = new java.util.concurrent.atomic.AtomicInteger(0)
-  val future: Future[Unit] =
-//  {
-//    val io: IO[Unit] = IO(println(s"Doing something asynchronously ${atomicFutureCounter.incrementAndGet()}"))
-//    io.unsafeToFuture()
-//  }
-  {
-    scribe.info(s"Begin Future program ${atomicFutureCounter.incrementAndGet()}")
-    scribe.info(s"Simple log")
-    mainPrg.use(_ => IO.unit).unsafeToFuture().andThen { case _ =>
-      // After future is completed
-//      PwRun.pageCleanup(driver, config)
-      streams.close()
-//      materializer.close()
-    }
-  }
+  val future: Future[Unit] = jsRunPrg.use(_ => IO.unit).unsafeToFuture()
 
   /** Stops the run and releases all the resources.
     *
@@ -306,27 +105,47 @@ class CERun(
     *
     * Idempotent, async, nothrow.
     */
-  @volatile
-  var receiveCounter = new AtomicInteger(0)
 
   override def close(): Unit = {
-    streams.close()
     wantToClose.set(true)
-    scribe.info(
-      s"Received Close signal count is ${receiveCounter.getAndIncrement()}"
-    )
-    scribe.info(s"wantToClose in close  ${wantToClose.get()}")
-
+    scribe.info(s"WantToClose in close is ${wantToClose.get()}")
   }
+
 }
 
 class CEComRun(
-    config: Config,
-    streams: OutputStreams.Streams,
-    input: Seq[Input]
-) extends CERun(config, streams, input)
+    pwConfig: Config,
+    runConfig: RunConfig,
+    input: Seq[Input],
+    onMessage: String => Unit
+) extends CERun(pwConfig, runConfig, input)
     with JSComRun {
-  override def send(msg: String): Unit = scribe.info("Send a message")
+  private[this] val sendQueue = new ConcurrentLinkedQueue[String]
+  override def send(msg: String): Unit = {
+    scribe.info("Send a message")
+    sendQueue.offer(msg)
+  }
+  private def jsRunPrg: Resource[IO, Unit] = for {
+    _ <- Resource.pure(scribe.info(s"Begin Main JSComRun!"))
+    pageInstance <- createPage(headlessConfig)
+    _ <- preparePageForJsRun(
+      pageInstance,
+      materializer(pwConfig),
+      input,
+      enableCom = true
+    )
+    initialStatus <- isConnectionUp(pageInstance, intf)
+    _ <-
+      if (!initialStatus) Resource.pure[IO, Unit](IO.sleep(100.milliseconds))
+      else Resource.pure[IO, Unit](IO.unit)
+    _ <- isConnectionUp(pageInstance, intf)
+    jsResponse <- fetchMessages(pageInstance, intf)
+    _ <- Resource.pure(scribe.info(s"jsResponse is $jsResponse"))
+    _ <- streamWriter(jsResponse, runConfig)
+  } yield {
+    handleErrors(jsResponse)
+  }
+
 }
 
 private class WindowOnErrorException(errs: List[String])

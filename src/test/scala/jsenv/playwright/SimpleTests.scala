@@ -8,7 +8,7 @@ import scala.concurrent.duration.DurationInt
 
 class SimpleTests {
   private val kit = new TestKit(
-    new PWEnv("chrome", headless = true, showLogs = true),
+    new PWEnv("chrome", headless = true, showLogs = false),
     10.second
   )
   private val cekit = new TestKit(

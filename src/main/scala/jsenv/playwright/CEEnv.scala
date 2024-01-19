@@ -17,16 +17,13 @@ class CEEnv(
       .supportsInheritIO()
       .supportsOnOutputStream()
   }
-  override val name: String = "CEEnv"
+  override val name: String = s"CEEnv with $browserName"
   setupLogger(showLogs)
-
-  // Define the IO Program
-  //
 
   override def start(input: Seq[Input], runConfig: RunConfig): JSRun =
     try {
       validator.validate(runConfig)
-      new CERun(pwConfig, OutputStreams.prepare(runConfig), input)
+      new CERun(pwConfig, runConfig, input)
     } catch {
       case NonFatal(t) =>
         JSRun.failed(t)
@@ -36,28 +33,20 @@ class CEEnv(
       input: Seq[Input],
       runConfig: RunConfig,
       onMessage: String => Unit
-  ): JSComRun = new CEComRun(pwConfig, OutputStreams.prepare(runConfig), input)
+  ): JSComRun = new CEComRun(pwConfig, runConfig, input, onMessage)
 
   private def setupLogger(showLogs: Boolean): Unit = {
     val formatter =
       formatter"$date [$threadName] $level $methodName - $messages$mdc"
+    scribe.Logger.root
+      .clearHandlers()
+      .withHandler(
+        formatter = formatter,
+      )
+      .replace()
     if (showLogs) {
-      scribe.Logger.root
-        .clearHandlers()
-        .withHandler(
-          formatter = formatter,
-          minimumLevel = Some(scribe.Level.Info)
-        )
-        .replace()
       scribe.Logger.root.withMinimumLevel(scribe.Level.Trace).replace()
     } else {
-      scribe.Logger.root
-        .clearHandlers()
-        .withHandler(
-          formatter = formatter,
-          minimumLevel = Some(scribe.Level.Error)
-        )
-        .replace()
       scribe.Logger.root.withMinimumLevel(scribe.Level.Error).replace()
     }
   }

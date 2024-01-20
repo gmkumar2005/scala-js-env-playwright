@@ -64,4 +64,50 @@ class SimpleTests {
         .closeRun()
     }
   }
+
+  @Test
+  def basicTestce: Unit = {
+    //    this.scalajsSeleniumInternalInterface.send(arguments[0]);
+    //    0
+    cekit.withComRun("""
+      scalajsCom.init(function(msg) { scalajsCom.send("received: " + msg); });
+      scalajsCom.send("Hello World");
+    """) { run =>
+
+      run.expectMsg("Hello World")
+
+      for (i <- 0 to 10) {
+        run
+          .send(i.toString)
+          .expectMsg(s"received: $i")
+      }
+
+      run.expectNoMsgs()
+        .closeRun()
+    }
+  }
+
+
+  @Test
+  def basicTest: Unit = {
+    //    this.scalajsSeleniumInternalInterface.send(arguments[0]);
+    //    0
+    kit.withComRun("""
+      scalajsCom.init(function(msg) { scalajsCom.send("received: " + msg); });
+      scalajsCom.send("Hello World");
+    """) { run =>
+
+      run.expectMsg("Hello World")
+
+      for (i <- 0 to 10) {
+        run
+          .send(i.toString)
+          .expectMsg(s"received: $i")
+      }
+
+      run.expectNoMsgs()
+        .closeRun()
+    }
+  }
+
 }

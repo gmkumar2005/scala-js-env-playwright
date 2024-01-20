@@ -1,7 +1,7 @@
 package jsenv.playwright
 
 import cats.effect.unsafe.implicits.global
-import cats.effect.{IO, Resource}
+import cats.effect.{Deferred, IO, Resource}
 import jsenv.playwright.PWEnv.Config
 import jsenv.playwright.ResourcesFactory._
 import org.scalajs.jsenv.{Input, JSComRun, JSRun, RunConfig}
@@ -25,7 +25,11 @@ class CERun(
 //    ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
 
   val headlessConfig = true
+  protected val enableCom = false
   protected val intf = "this.scalajsSeleniumInternalInterface"
+  val stopSignal: Deferred[IO, Boolean] = Deferred.unsafe[IO, Boolean]
+  stopSignal.complete(false).unsafeRunSync()
+  protected val sendQueue = new ConcurrentLinkedQueue[String]
   System.setProperty("playwright.driver.impl", "jsenv.DriverJar")
 
   /** A [[scala.concurrent.Future Future]] that completes if the run completes.
@@ -55,14 +59,14 @@ class CERun(
   // If want to close then close driver, streams, materializer
   // After future is completed close driver, streams, materializer
 
-  private def jsRunPrg: Resource[IO, Unit] = for {
+  def jsRunPrg(isComEnabled:Boolean): Resource[IO, Unit] = for {
     _ <- Resource.pure(scribe.info(s"Begin Main JSRun!"))
     pageInstance <- createPage(headlessConfig)
     _ <- preparePageForJsRun(
       pageInstance,
       materializer(pwConfig),
       input,
-      enableCom = false
+      isComEnabled
     )
     initialStatus <- isConnectionUp(pageInstance, intf)
     _ <-
@@ -72,6 +76,14 @@ class CERun(
     jsResponse <- fetchMessages(pageInstance, intf)
     _ <- Resource.pure(scribe.info(s"jsResponse is $jsResponse"))
     _ <- streamWriter(jsResponse, runConfig)
+    _ <- Resource.pure(
+      scribe.info(
+        s"StopSignal in jsRunPrg is ${stopSignal.get.unsafeRunSync()}"
+      )
+    )
+    _ <- sendAllResource(sendQueue, pageInstance, intf)
+    _ <- fetchAndProcess(stopSignal, pageInstance, intf, runConfig)
+
   } yield {
     handleErrors(jsResponse)
   }
@@ -90,7 +102,7 @@ class CERun(
     }
   }
 
-  val future: Future[Unit] = jsRunPrg.use(_ => IO.unit).unsafeToFuture()
+  val future: Future[Unit] = jsRunPrg(enableCom).use(_ => IO.unit).unsafeToFuture()
 
   /** Stops the run and releases all the resources.
     *
@@ -108,6 +120,8 @@ class CERun(
 
   override def close(): Unit = {
     wantToClose.set(true)
+    stopSignal.complete(true).unsafeRunSync()
+
     scribe.info(s"WantToClose in close is ${wantToClose.get()}")
   }
 
@@ -120,32 +134,13 @@ class CEComRun(
     onMessage: String => Unit
 ) extends CERun(pwConfig, runConfig, input)
     with JSComRun {
-  private[this] val sendQueue = new ConcurrentLinkedQueue[String]
+  override protected val sendQueue = new ConcurrentLinkedQueue[String]
+  override protected val enableCom = true
   override def send(msg: String): Unit = {
-    scribe.info("Send a message")
+    scribe.info("Send a message to sendQueue")
     sendQueue.offer(msg)
   }
-  private def jsRunPrg: Resource[IO, Unit] = for {
-    _ <- Resource.pure(scribe.info(s"Begin Main JSComRun!"))
-    pageInstance <- createPage(headlessConfig)
-    _ <- preparePageForJsRun(
-      pageInstance,
-      materializer(pwConfig),
-      input,
-      enableCom = true
-    )
-    initialStatus <- isConnectionUp(pageInstance, intf)
-    _ <-
-      if (!initialStatus) Resource.pure[IO, Unit](IO.sleep(100.milliseconds))
-      else Resource.pure[IO, Unit](IO.unit)
-    _ <- isConnectionUp(pageInstance, intf)
-    jsResponse <- fetchMessages(pageInstance, intf)
-    _ <- Resource.pure(scribe.info(s"jsResponse is $jsResponse"))
-    _ <- streamWriter(jsResponse, runConfig)
-  } yield {
-    handleErrors(jsResponse)
-  }
-
+  override val future: Future[Unit] = jsRunPrg(enableCom).use(_ => IO.unit).unsafeToFuture()
 }
 
 private class WindowOnErrorException(errs: List[String])

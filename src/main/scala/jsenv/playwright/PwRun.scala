@@ -93,6 +93,7 @@ private final class PwComRun(
   override protected def sendAll(): Unit = {
     val msg = sendQueue.poll()
     if (msg != null) {
+      scribe.info(s"Sending message $msg")
       val script = s"$intf.send(arguments[0]);"
       val wrapper = s"function(arg) { $script }"
       driver.page.evaluate(s"$wrapper", msg)

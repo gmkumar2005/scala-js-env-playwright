@@ -1,14 +1,16 @@
 package jsenv.playwright
 
-import cats.effect.{IO, Resource}
+import cats.effect.{Deferred, IO, Resource}
 import com.microsoft.playwright.{Browser, BrowserType, Page, Playwright}
 import jsenv.playwright.PWEnv.Config
 import org.scalajs.jsenv.{Input, RunConfig}
 
 import java.util
 import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.function.Consumer
 import scala.annotation.tailrec
+import scala.concurrent.duration.DurationInt
 import scala.jdk.CollectionConverters.seqAsJavaListConverter
 
 object ResourcesFactory {
@@ -99,13 +101,16 @@ object ResourcesFactory {
       }
     } yield ()
 
+  val fetchCounter = new AtomicInteger(0)
   def fetchMessages(
       pageInstance: Page,
       intf: String
   ): Resource[IO, util.Map[String, util.List[String]]] = {
     Resource.make {
       IO {
-        scribe.info(s"Page instance is ${pageInstance.hashCode()}")
+        scribe.info(
+          s"Page instance is ${pageInstance.hashCode()} fetchCounter is ${fetchCounter.incrementAndGet()}"
+        )
         val data = pageInstance
           .evaluate(s"$intf.fetch();")
           .asInstanceOf[java.util.Map[String, java.util.List[String]]]
@@ -114,6 +119,44 @@ object ResourcesFactory {
     }(_ => IO.unit)
   }
 
+  def sendAllResource(
+      sendQueue: ConcurrentLinkedQueue[String],
+      pageInstance: Page,
+      intf: String
+  ): Resource[IO, Unit] = {
+    Resource.make {
+      scribe.info(s"Sending all messages sendQueue size is ${sendQueue.size()} ")
+      sendAll(sendQueue, pageInstance, intf)
+      IO.unit
+    }(_ => IO.unit)
+  }
+
+  def fetchAndProcess(
+      stopSignal: Deferred[IO, Boolean],
+      pageInstance: Page,
+      intf: String,
+      runConfig: RunConfig
+  ): Resource[IO, Unit] = {
+    Resource.make {
+      stopSignal.get.attempt.flatMap {
+        case Left(_) =>
+          scribe.info("Stopping the program")
+          IO.unit
+        case Right(_) => {
+          scribe.info("Program is running")
+          for {
+            _ <- Resource.pure(
+              scribe.info(s"Page instance is ${pageInstance.hashCode()}")
+            )
+            jsResponse <- fetchMessages(pageInstance, intf)
+            _ <- streamWriter(jsResponse, runConfig)
+          } yield ()
+          IO.sleep(100.milliseconds)
+        }
+      }
+    }(_ => IO.unit)
+
+  }
   def isConnectionUp(
       pageInstance: Page,
       intf: String
@@ -186,6 +229,7 @@ object ResourcesFactory {
       intf: String
   ): Unit = {
     val msg = sendQueue.poll()
+    scribe.info(s"Sending message $msg")
     if (msg != null) {
       val script = s"$intf.send(arguments[0]);"
       val wrapper = s"function(arg) { $script }"

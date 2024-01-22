@@ -7,7 +7,7 @@ import org.scalajs.jsenv.{Input, RunConfig}
 
 import java.util
 import java.util.concurrent.ConcurrentLinkedQueue
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 import java.util.function.Consumer
 import scala.annotation.tailrec
 import scala.concurrent.duration.DurationInt
@@ -102,21 +102,26 @@ object ResourcesFactory {
     } yield ()
 
   val fetchCounter = new AtomicInteger(0)
+
   def fetchMessages(
       pageInstance: Page,
       intf: String
+  ): java.util.Map[String, java.util.List[String]] = {
+    val data =
+      pageInstance
+        .evaluate(s"$intf.fetch();")
+        .asInstanceOf[java.util.Map[String, java.util.List[String]]]
+    data
+  }
+  def fetchMessagesResource(
+      pageInstance: Page,
+      intf: String
   ): Resource[IO, util.Map[String, util.List[String]]] = {
-    Resource.make {
-      IO {
-        scribe.info(
-          s"Page instance is ${pageInstance.hashCode()} fetchCounter is ${fetchCounter.incrementAndGet()}"
-        )
-        val data = pageInstance
-          .evaluate(s"$intf.fetch();")
-          .asInstanceOf[java.util.Map[String, java.util.List[String]]]
-        data
-      }
-    }(_ => IO.unit)
+    Resource.pure[IO, util.Map[String, util.List[String]]] {
+      scribe.info(
+          s"Page instance is ${pageInstance.hashCode()} fetchCounter is ${fetchCounter.incrementAndGet()}")
+        fetchMessages(pageInstance, intf)
+    }
   }
 
   def sendAllResource(
@@ -125,31 +130,60 @@ object ResourcesFactory {
       intf: String
   ): Resource[IO, Unit] = {
     Resource.make {
-      scribe.info(s"Sending all messages sendQueue size is ${sendQueue.size()} ")
+      scribe.info(
+        s"Sending all messages sendQueue size is ${sendQueue.size()} "
+      )
       sendAll(sendQueue, pageInstance, intf)
       IO.unit
     }(_ => IO.unit)
   }
 
+  def ProcessUntilStop(
+      stopSignal: AtomicBoolean,
+      pageInstance: Page,
+      intf: String,
+      sendQueue: ConcurrentLinkedQueue[String],
+      outStream: OutputStreams.Streams,
+      receivedMessage: String => Unit,
+      isComEnabled: Boolean
+  ): Resource[IO, Unit] = {
+    Resource.make {
+      IO.unit
+    } { _ =>
+      while (!stopSignal.get() && isComEnabled) {
+        scribe.info(
+          s"Calling repeatSendUntilStopSignal with stopSignal = ${stopSignal.get()}"
+        )
+        IO.sleep(100.milliseconds)
+        sendAll(sendQueue, pageInstance, intf)
+        val jsResponse = fetchMessages(pageInstance, intf)
+        streamWriter(jsResponse, outStream, Some(receivedMessage))
+      }
+      IO.unit
+    }
+  }
+
+
   def fetchAndProcess(
       stopSignal: Deferred[IO, Boolean],
       pageInstance: Page,
       intf: String,
-      runConfig: RunConfig
+//      runConfig: RunConfig,
+      outStream: OutputStreams.Streams
   ): Resource[IO, Unit] = {
     Resource.make {
-      stopSignal.get.attempt.flatMap {
-        case Left(_) =>
+      stopSignal.get.flatMap {
+        case true =>
           scribe.info("Stopping the program")
           IO.unit
-        case Right(_) => {
+        case false => {
           scribe.info("Program is running")
           for {
             _ <- Resource.pure(
               scribe.info(s"Page instance is ${pageInstance.hashCode()}")
             )
-            jsResponse <- fetchMessages(pageInstance, intf)
-            _ <- streamWriter(jsResponse, runConfig)
+            jsResponse <- fetchMessagesResource(pageInstance, intf)
+            _ <- streamWriterResource(jsResponse, outStream)
           } yield ()
           IO.sleep(100.milliseconds)
         }
@@ -161,13 +195,14 @@ object ResourcesFactory {
       pageInstance: Page,
       intf: String
   ): Resource[IO, Boolean] = {
-    Resource.make {
-      IO {
-        scribe.info(s"Page instance is ${pageInstance.hashCode()}")
-        pageInstance.evaluate(s"!!$intf;").asInstanceOf[Boolean]
-      }
-    }(_ => IO.unit)
+    Resource.pure[IO, Boolean] {
+      scribe.info(s"Page instance is ${pageInstance.hashCode()}")
+      pageInstance.evaluate(s"!!$intf;").asInstanceOf[Boolean]
+    }
+
   }
+
+
 
   def materializer(pwConfig: Config): Resource[IO, FileMaterializer] =
     Resource.make {
@@ -185,7 +220,7 @@ object ResourcesFactory {
   /*
    * Creates resource for outputStream
    */
-  private def outputStream(
+  def outputStream(
       runConfig: RunConfig
   ): Resource[IO, OutputStreams.Streams] =
     Resource.make {
@@ -202,24 +237,37 @@ object ResourcesFactory {
 
   def streamWriter(
       jsResponse: util.Map[String, util.List[String]],
-      runConfig: RunConfig,
+      outStream: OutputStreams.Streams,
       onMessage: Option[String => Unit] = None
-  ): Resource[IO, Unit] = {
+  ): Unit = {
     val data = jsResponse.get("consoleLog")
     val consoleError = jsResponse.get("consoleError")
     val error = jsResponse.get("errors")
     onMessage match {
       case Some(f) =>
         val msgs = jsResponse.get("msgs")
+        //        data.get("msgs").forEach(consumer(receivedMessage _))
+        //        msgs.forEach(receivedMessage(f))
         msgs.forEach(consumer(f))
-      case None => ()
+      case None => scribe.info("No onMessage function")
     }
-    for {
-      out <- ResourcesFactory.outputStream(runConfig)
-      _ <- Resource.pure(data.forEach(out.out.println _))
-      _ <- Resource.pure(error.forEach(out.out.println _))
-      _ <- Resource.pure(consoleError.forEach(out.out.println _))
-    } yield ()
+    data.forEach(outStream.out.println _)
+    error.forEach(outStream.out.println _)
+    consoleError.forEach(outStream.out.println _)
+//    val errs = data.get("errors")
+    if (!error.isEmpty) {
+      // Convoluted way of writing errs.toList without JavaConverters.
+      val errList = error.toArray(Array[String]()).toList
+      throw new WindowOnErrorException(errList)
+    }
+  }
+  def streamWriterResource(
+      jsResponse: util.Map[String, util.List[String]],
+      outStream: OutputStreams.Streams,
+      onMessage: Option[String => Unit] = None
+  ): Resource[IO, Unit] = {
+    streamWriter(jsResponse, outStream, onMessage)
+    Resource.pure[IO, Unit](IO.unit)
   }
 
   @tailrec
@@ -229,8 +277,8 @@ object ResourcesFactory {
       intf: String
   ): Unit = {
     val msg = sendQueue.poll()
-    scribe.info(s"Sending message $msg")
     if (msg != null) {
+      scribe.debug(s"Sending message $msg")
       val script = s"$intf.send(arguments[0]);"
       val wrapper = s"function(arg) { $script }"
       pageInstance.evaluate(s"$wrapper", msg)

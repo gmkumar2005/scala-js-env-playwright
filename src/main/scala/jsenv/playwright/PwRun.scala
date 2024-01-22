@@ -85,12 +85,15 @@ private final class PwComRun(
     with JSComRun {
   private[this] val sendQueue = new ConcurrentLinkedQueue[String]
 
-  def send(msg: String): Unit = sendQueue.offer(msg)
+  def send(msg: String): Unit = {
+    scribe.info(s"Calling send with message $msg")
+    sendQueue.offer(msg)}
 
   override protected def receivedMessage(msg: String): Unit = onMessage(msg)
 
   @tailrec
   override protected def sendAll(): Unit = {
+    scribe.info(s"Calling sendAll")
     val msg = sendQueue.poll()
     if (msg != null) {
       scribe.info(s"Sending message $msg")

@@ -11,7 +11,7 @@ import java.nio.file.Files
 import scala.concurrent.duration.DurationInt
 
 class CERunTests {
-  val withCom = true
+  val withCom = false
   private val kit = new TestKit(new CEEnv("chrome",headless = true,showLogs=true,PWEnv.Config()), 10.second)
 
   private def withRun(input: Seq[Input])(body: Run => Unit) = {

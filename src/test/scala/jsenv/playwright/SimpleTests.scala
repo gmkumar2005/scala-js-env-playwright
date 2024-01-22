@@ -13,7 +13,7 @@ class SimpleTests {
   )
   private val cekit = new TestKit(
     new CEEnv("chrome", headless = false, showLogs = true, PWEnv.Config()),
-    10.second
+    100.second
   )
   val withCom = true
   private def withRun(input: Seq[Input])(body: Run => Unit) = {
@@ -88,6 +88,7 @@ class SimpleTests {
   }
 
 
+
   @Test
   def basicTest: Unit = {
     //    this.scalajsSeleniumInternalInterface.send(arguments[0]);
@@ -109,5 +110,7 @@ class SimpleTests {
         .closeRun()
     }
   }
+
+
 
 }

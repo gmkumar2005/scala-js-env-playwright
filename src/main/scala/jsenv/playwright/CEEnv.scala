@@ -1,7 +1,7 @@
 package jsenv.playwright
 
 import org.scalajs.jsenv._
-import scribe.format.{FormatterInterpolator, date, level, mdc, messages, methodName, threadName}
+import scribe.format.{FormatterInterpolator, dateFull, level, mdc, messages, methodName, threadName}
 
 import scala.util.control.NonFatal
 
@@ -11,6 +11,8 @@ class CEEnv(
     showLogs: Boolean = false,
     pwConfig: PWEnv.Config
 ) extends JSEnv {
+//  private lazy val validator = ExternalJSRun.supports(RunConfig.Validator())
+
   private lazy val validator = {
     RunConfig
       .Validator()
@@ -22,26 +24,44 @@ class CEEnv(
 
   override def start(input: Seq[Input], runConfig: RunConfig): JSRun =
     try {
+      scribe.info(
+        s"Calling validator CEEnv.start with input $input and runConfig $runConfig"
+      )
       validator.validate(runConfig)
       new CERun(pwConfig, runConfig, input)
     } catch {
-      case NonFatal(t) =>
-        JSRun.failed(t)
+      case e: Exception =>
+        scribe.error(s"IllegalArgumentException $e")
+        throw e
+      case r : RuntimeException =>
+        scribe.error(s"RuntimeException $r")
+        throw r
+
+//      case NonFatal(t) =>
+//        scribe.error(s"CEEnv.start failed with $t")
+//        JSRun.failed(t)
     }
 
   override def startWithCom(
       input: Seq[Input],
       runConfig: RunConfig,
       onMessage: String => Unit
-  ): JSComRun = new CEComRun(pwConfig, runConfig, input, onMessage)
+  ): JSComRun = try {
+    validator.validate(runConfig)
+    new CEComRun(pwConfig, runConfig, input, onMessage)
+  } catch {
+    case NonFatal(t) =>
+      JSComRun.failed(t)
+  }
 
   private def setupLogger(showLogs: Boolean): Unit = {
     val formatter =
-      formatter"$date [$threadName] $level $methodName - $messages$mdc"
+      formatter"$dateFull [$threadName] $level $methodName - $messages$mdc"
+//    val formatter"${date("yyyy-MM-dd HH:mm:ss.SSS")} [$threadName] $level $methodName - $messages$mdc"
     scribe.Logger.root
       .clearHandlers()
       .withHandler(
-        formatter = formatter,
+        formatter = formatter
       )
       .replace()
     if (showLogs) {

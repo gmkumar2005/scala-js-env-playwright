@@ -22,7 +22,7 @@ class CEEnv(
   override val name: String = s"CEEnv with $browserName"
   setupLogger(showLogs)
 
-  override def start(input: Seq[Input], runConfig: RunConfig): JSRun =
+  override def start(input: Seq[Input], runConfig: RunConfig): JSRun = {
     try {
       scribe.info(
         s"Calling validator CEEnv.start with input $input and runConfig $runConfig"
@@ -30,30 +30,32 @@ class CEEnv(
       validator.validate(runConfig)
       new CERun(pwConfig, runConfig, input)
     } catch {
-      case e: Exception =>
-        scribe.error(s"IllegalArgumentException $e")
-        throw e
-      case r : RuntimeException =>
-        scribe.error(s"RuntimeException $r")
-        throw r
-
-//      case NonFatal(t) =>
-//        scribe.error(s"CEEnv.start failed with $t")
-//        JSRun.failed(t)
+      case ve: java.lang.IllegalArgumentException =>
+        scribe.error(s"CEEnv.startWithCom failed with throw ve $ve")
+        throw ve
+      case NonFatal(t) =>
+        scribe.error(s"CEEnv.start failed with $t")
+        JSRun.failed(t)
     }
+  }
 
   override def startWithCom(
       input: Seq[Input],
       runConfig: RunConfig,
       onMessage: String => Unit
-  ): JSComRun = try {
-    validator.validate(runConfig)
-    new CEComRun(pwConfig, runConfig, input, onMessage)
-  } catch {
-    case NonFatal(t) =>
-      JSComRun.failed(t)
+  ): JSComRun = {
+    try {
+      validator.validate(runConfig)
+      new CEComRun(pwConfig, runConfig, input, onMessage)
+    } catch {
+      case ve: java.lang.IllegalArgumentException =>
+        scribe.error(s"CEEnv.startWithCom failed with throw ve $ve")
+        throw ve
+      case NonFatal(t) =>
+        scribe.error(s"CEEnv.startWithCom failed with $t")
+        JSComRun.failed(t)
+    }
   }
-
   private def setupLogger(showLogs: Boolean): Unit = {
     val formatter =
       formatter"$dateFull [$threadName] $level $methodName - $messages$mdc"

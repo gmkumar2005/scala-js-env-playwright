@@ -20,13 +20,7 @@ class CERun(
 
   implicit val ec: scala.concurrent.ExecutionContext =
     scala.concurrent.ExecutionContext.global
-  private lazy val validator = {
-    RunConfig
-      .Validator()
-      .supportsInheritIO()
-      .supportsOnOutputStream()
-  }
-  validator.validate(runConfig)
+
 //  private[this] implicit val ec =
 //    ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
 

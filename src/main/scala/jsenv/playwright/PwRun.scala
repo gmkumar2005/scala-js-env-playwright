@@ -152,7 +152,6 @@ private object PwRun {
   )(newRun: Ctor[T], failed: Throwable => T): T = {
     scribe.debug(s"Starting PWRun")
     validator.validate(runConfig)
-
     try {
       withCleanup(FileMaterializer(config.materialization))(_.close()) { m =>
         val setupJsScript = Input.Script(JSSetup.setupFile(enableCom))

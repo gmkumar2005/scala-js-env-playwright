@@ -5,5 +5,5 @@ import org.scalajs.jsenv.test._
 
 @RunWith(classOf[JSEnvSuiteRunner])
 class PWSuiteFirefox extends JSEnvSuite(
-  JSEnvSuiteConfig(new PWEnv("firefox",headless = true,showLogs=true))
+  JSEnvSuiteConfig(new PWEnv("firefox",debug=true))
 )

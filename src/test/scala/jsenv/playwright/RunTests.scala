@@ -1,3 +1,4 @@
+
 package jsenv.playwright
 
 import com.google.common.jimfs.Jimfs
@@ -12,22 +13,22 @@ import scala.concurrent.duration.DurationInt
 
 class RunTests {
   val withCom = true
-  private val kit = new TestKit(new PWEnv("chrome",headless = true,showLogs=false), 10.second)
+  private val kit = new TestKit(new PWEnv("chrome",debug = true), 10.second)
 
-  private def withRun(input: Seq[Input])(body: Run => Unit) = {
+  private def withRun(input: Seq[Input])(body: Run => Unit): Unit = {
     if (withCom) kit.withComRun(input)(body)
     else kit.withRun(input)(body)
   }
 
   private def withRun(code: String, config: RunConfig = RunConfig())(
-      body: Run => Unit
-  ) = {
+    body: Run => Unit
+  ): Unit = {
     if (withCom) kit.withComRun(code, config)(body)
     else kit.withRun(code, config)(body)
   }
 
   @Test
-  def failureTest: Unit = {
+  def failureTest(): Unit = {
     withRun("""
       var a = {};
       a.foo();
@@ -37,21 +38,21 @@ class RunTests {
   }
 
   @Test
-  def syntaxErrorTest: Unit = {
+  def syntaxErrorTest(): Unit = {
     withRun("{") {
       _.fails()
     }
   }
 
   @Test
-  def throwExceptionTest: Unit = {
+  def throwExceptionTest(): Unit = {
     withRun("throw 1;") {
       _.fails()
     }
   }
 
   @Test
-  def catchExceptionTest: Unit = {
+  def catchExceptionTest(): Unit = {
     withRun("""
       try {
         throw "hello world";
@@ -65,7 +66,7 @@ class RunTests {
   }
 
   @Test // Failed in Phantom - #2053
-  def utf8Test: Unit = {
+  def utf8Test(): Unit = {
     withRun("console.log('\u1234')") {
       _.expectOut("\u1234\n")
         .closeRun()
@@ -73,26 +74,26 @@ class RunTests {
   }
 
   @Test
-  def allowScriptTags: Unit = {
+  def allowScriptTags(): Unit = {
     withRun("""console.log("<script></script>");""") {
       _.expectOut("<script></script>\n")
         .closeRun()
     }
   }
 
-//  @Test
-//  def jsExitsTest: Unit = {
-//    val exitStat = config.exitJSStatement.getOrElse(
-//      throw new AssumptionViolatedException("JSEnv needs exitJSStatement"))
-//
-//    withRun(exitStat) {
-//      _.succeeds()
-//    }
-//  }
+  //  @Test
+  //  def jsExitsTest: Unit = {
+  //    val exitStat = config.exitJSStatement.getOrElse(
+  //      throw new AssumptionViolatedException("JSEnv needs exitJSStatement"))
+  //
+  //    withRun(exitStat) {
+  //      _.succeeds()
+  //    }
+  //  }
 
   // #500 Node.js used to strip double percentage signs even with only 1 argument
   @Test
-  def percentageTest: Unit = {
+  def percentageTest(): Unit = {
     val strings = (1 to 15).map("%" * _)
     val code = strings.map(str => s"""console.log("$str");\n""").mkString("")
     val result = strings.mkString("", "\n", "\n")
@@ -104,7 +105,7 @@ class RunTests {
   }
 
   @Test
-  def fastCloseTest: Unit = {
+  def fastCloseTest(): Unit = {
     /* This test also tests a failure mode where the ExternalJSRun is still
      * piping output while the client calls close.
      */
@@ -114,7 +115,7 @@ class RunTests {
   }
 
   @Test
-  def multiCloseAfterTerminatedTest: Unit = {
+  def multiCloseAfterTerminatedTest(): Unit = {
     withRun("") { run =>
       run.closeRun()
 
@@ -126,7 +127,7 @@ class RunTests {
   }
 
   @Test
-  def noThrowOnBadFileTest: Unit = {
+  def noThrowOnBadFileTest(): Unit = {
     val badFile = Jimfs.newFileSystem().getPath("nonexistent")
 
     // `start` may not throw but must fail asynchronously
@@ -136,7 +137,7 @@ class RunTests {
   }
 
   @Test
-  def defaultFilesystem: Unit = {
+  def defaultFilesystem(): Unit = {
     // Tests that a JSEnv works with files from the default filesystem.
 
     val tmpFile = File.createTempFile("sjs-run-test-defaultfile", ".js")

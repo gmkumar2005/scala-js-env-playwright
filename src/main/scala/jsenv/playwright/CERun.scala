@@ -1,18 +1,21 @@
 package jsenv.playwright
 
 import cats.effect.unsafe.implicits.global
-import cats.effect.{Deferred, IO, Resource}
+import cats.effect.{IO, Resource}
+import com.microsoft.playwright.BrowserType.LaunchOptions
 import jsenv.playwright.PWEnv.Config
+import jsenv.playwright.PageFactory._
 import jsenv.playwright.ResourcesFactory._
 import org.scalajs.jsenv.{Input, JSComRun, JSRun, RunConfig}
 
-import java.util
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.concurrent._
 import scala.concurrent.duration.DurationInt
 
 class CERun(
+    browserName: String,
+    headless: Boolean,
     pwConfig: Config,
     runConfig: RunConfig,
     input: Seq[Input]
@@ -21,16 +24,12 @@ class CERun(
   implicit val ec: scala.concurrent.ExecutionContext =
     scala.concurrent.ExecutionContext.global
 
-//  private[this] implicit val ec =
-//    ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
-
-  val headlessConfig = true
+  // enableCom is false for CERun and true for CEComRun
   protected val enableCom = false
-  protected val intf = "this.scalajsSeleniumInternalInterface"
-  val stopSignal: Deferred[IO, Boolean] = Deferred.unsafe[IO, Boolean]
-  stopSignal.complete(false).unsafeRunSync()
+  protected val intf = "this.scalajsPlayWrightInternalInterface"
   protected val sendQueue = new ConcurrentLinkedQueue[String]
-  System.setProperty("playwright.driver.impl", "jsenv.DriverJar")
+  // receivedMessage is called only from JSComRun. Hence its implementation is empty in CERun
+  protected def receivedMessage(msg: String): Unit = ()
 
   /** A [[scala.concurrent.Future Future]] that completes if the run completes.
     *
@@ -59,50 +58,51 @@ class CERun(
   // If want to close then close driver, streams, materializer
   // After future is completed close driver, streams, materializer
 
-  def jsRunPrg(isComEnabled:Boolean): Resource[IO, Unit] = for {
-    _ <- Resource.pure(scribe.info(s"Begin Main JSRun!"))
-    pageInstance <- createPage(headlessConfig)
+  def jsRunPrg(
+      browserName: String,
+      headless: Boolean,
+      isComEnabled: Boolean,
+      launchOptions: Option[LaunchOptions]
+  ): Resource[IO, Unit] = for {
+    _ <- Resource.pure(
+      scribe.info(
+        s"Begin Main with isComEnabled $isComEnabled " +
+          s"and  browserName $browserName " +
+          s"and headless is $headless "
+      )
+    )
+    pageInstance <- createPage(
+      browserName,
+      headless,
+      launchOptions
+    )
     _ <- preparePageForJsRun(
       pageInstance,
       materializer(pwConfig),
       input,
       isComEnabled
     )
-    initialStatus <- isConnectionUp(pageInstance, intf)
+    connectionReady <- isConnectionUp(pageInstance, intf)
     _ <-
-      if (!initialStatus) Resource.pure[IO, Unit](IO.sleep(100.milliseconds))
+      if (!connectionReady) Resource.pure[IO, Unit](IO.sleep(100.milliseconds))
       else Resource.pure[IO, Unit](IO.unit)
     _ <- isConnectionUp(pageInstance, intf)
-    jsResponse <- fetchMessages(pageInstance, intf)
-    _ <- Resource.pure(scribe.info(s"jsResponse is $jsResponse"))
-    _ <- streamWriter(jsResponse, runConfig)
-    _ <- Resource.pure(
-      scribe.info(
-        s"StopSignal in jsRunPrg is ${stopSignal.get.unsafeRunSync()}"
-      )
+    out <- outputStream(runConfig)
+    _ <- processUntilStop(
+      wantToClose,
+      pageInstance,
+      intf,
+      sendQueue,
+      out,
+      receivedMessage,
+      isComEnabled
     )
-    _ <- sendAllResource(sendQueue, pageInstance, intf)
-    _ <- fetchAndProcess(stopSignal, pageInstance, intf, runConfig)
+  } yield ()
 
-  } yield {
-    handleErrors(jsResponse)
-  }
-
-  def handleErrors(
-      jsResponse: util.Map[String, util.List[String]]
-  ): Unit = {
-    val processErrors = jsResponse.get("errors")
-    val processConsoleErrors = jsResponse.get("consoleError")
-    if (!processErrors.isEmpty || !processConsoleErrors.isEmpty) {
-      scribe.info("Closing the main program inside yield with errors")
-      throw new WindowOnErrorException(
-        processErrors.toArray(Array[String]()).toList ++
-          processConsoleErrors.toArray(Array[String]()).toList
-      )
-    }
-  }
-
-  val future: Future[Unit] = jsRunPrg(enableCom).use(_ => IO.unit).unsafeToFuture()
+  lazy val future: Future[Unit] =
+    jsRunPrg(browserName, headless, enableCom, None)
+      .use(_ => IO.unit)
+      .unsafeToFuture()
 
   /** Stops the run and releases all the resources.
     *
@@ -120,27 +120,32 @@ class CERun(
 
   override def close(): Unit = {
     wantToClose.set(true)
-    stopSignal.complete(true).unsafeRunSync()
-
-    scribe.info(s"WantToClose in close is ${wantToClose.get()}")
+    scribe.info(s"StopSignal is ${wantToClose.get()}")
   }
 
 }
-
+// browserName, headless, pwConfig, runConfig, input, onMessage
 class CEComRun(
+    browserName: String,
+    headless: Boolean,
     pwConfig: Config,
     runConfig: RunConfig,
     input: Seq[Input],
     onMessage: String => Unit
-) extends CERun(pwConfig, runConfig, input)
+) extends CERun(
+      browserName,
+      headless,
+      pwConfig,
+      runConfig,
+      input
+    )
     with JSComRun {
-  override protected val sendQueue = new ConcurrentLinkedQueue[String]
+  // enableCom is false for CERun and true for CEComRun
   override protected val enableCom = true
-  override def send(msg: String): Unit = {
-    scribe.info("Send a message to sendQueue")
-    sendQueue.offer(msg)
-  }
-  override val future: Future[Unit] = jsRunPrg(enableCom).use(_ => IO.unit).unsafeToFuture()
+  // send is called only from JSComRun
+  override def send(msg: String): Unit = sendQueue.offer(msg)
+  // receivedMessage is called only from JSComRun. Hence its implementation is empty in CERun
+  override protected def receivedMessage(msg: String): Unit = onMessage(msg)
 }
 
 private class WindowOnErrorException(errs: List[String])

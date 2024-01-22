@@ -8,7 +8,7 @@ import java.nio.file.{Files, Path}
 private object JSSetup {
   def setupFile(enableCom: Boolean): Path = {
     val path = Jimfs.newFileSystem().getPath("setup.js")
-    val simpleContents = setupCode(enableCom)
+//    val simpleContents = setupCode(enableCom)
     val contents = setupCode(enableCom).getBytes(StandardCharsets.UTF_8)
     Files.write(path, contents)
   }
@@ -65,7 +65,7 @@ private object JSSetup {
      |    }
      |  }
      |
-     |  this.scalajsSeleniumInternalInterface = {
+     |  this.scalajsPlayWrightInternalInterface = {
      |    fetch: function() {
      |      var res = {
      |        consoleLog: consoleLog.slice(),

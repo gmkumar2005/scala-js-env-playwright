@@ -2,15 +2,15 @@ package jsenv.playwright
 
 import org.junit.Test
 import org.scalajs.jsenv.test.kit.TestKit
+
 import scala.concurrent.duration._
 
 
-class ComTests {
-  private val kit = new TestKit(new PWEnv("chrome",headless = true,showLogs=false), 10.second)
-
+class CEComTests {
+  private val kit = new TestKit(new PWEnv(showLogs = true), 10.second)
   @Test
-  def basicTest: Unit = {
-//    this.scalajsSeleniumInternalInterface.send(arguments[0]);
+  def basicTest(): Unit = {
+//    this.scalajsPlayWrightInternalInterface.send(arguments[0]);
 //    0
     kit.withComRun("""
       scalajsCom.init(function(msg) { scalajsCom.send("received: " + msg); });
@@ -52,7 +52,7 @@ class ComTests {
 //  }
 
   @Test
-  def multiEnvTest: Unit = {
+  def multiEnvTest(): Unit = {
     val n = 10
     val runs = List.fill(5) {
       kit.startWithCom("""
@@ -77,7 +77,7 @@ class ComTests {
     }
   }
 
-  private def replyTest(msg: String) = {
+  private def replyTest(msg: String): Unit = {
     kit.withComRun("scalajsCom.init(scalajsCom.send);") {
       _.send(msg)
         .expectMsg(msg)
@@ -87,7 +87,7 @@ class ComTests {
   }
 
   @Test
-  def largeMessageTest: Unit = {
+  def largeMessageTest(): Unit = {
     /* 1MB data.
      * (i & 0x7f) limits the input to the ASCII repertoire, which will use
      * exactly 1 byte per Char in UTF-8. This restriction also ensures that we
@@ -98,12 +98,12 @@ class ComTests {
   }
 
   @Test
-  def highCharTest: Unit = { // #1536
+  def highCharTest(): Unit = { // #1536
     replyTest("\uC421\u8F10\u0112\uFF32")
   }
 
   @Test
-  def noInitTest: Unit = {
+  def noInitTest(): Unit = {
     kit.withComRun("") {
       _.send("Dummy")
         .expectNoMsgs()
@@ -112,7 +112,7 @@ class ComTests {
   }
 
   @Test
-  def separateComStdoutTest: Unit = {
+  def separateComStdoutTest(): Unit = {
     // Make sure that com and stdout do not interfere with each other.
     kit.withComRun("""
       scalajsCom.init(function (msg) {

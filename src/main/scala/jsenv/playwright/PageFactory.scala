@@ -79,7 +79,7 @@ object PageFactory {
       }
     })(browser =>
       IO {
-        scribe.debug(s"Closing browser with ${browser.hashCode()}}")
+        scribe.debug(s"Closing browser with ${browser.hashCode()}")
         browser.close()
       }
     )

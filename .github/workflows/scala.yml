@@ -26,9 +26,6 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
         cache: 'sbt'
-    - name: install playwright
-      run: |
-        npx playwright install --with-deps
     - name: Cache Playwright drivers
       uses: actions/cache@v3
       with:

@@ -140,7 +140,7 @@ object ResourcesFactory {
   ): Unit = {
     val msg = sendQueue.poll()
     if (msg != null) {
-      scribe.debug(s"Sending message $msg")
+      scribe.debug(s"Sending message ${msg.take(100)}")
       val script = s"$intf.send(arguments[0]);"
       val wrapper = s"function(arg) { $script }"
       pageInstance.evaluate(s"$wrapper", msg)

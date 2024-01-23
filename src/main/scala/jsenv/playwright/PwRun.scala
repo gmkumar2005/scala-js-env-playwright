@@ -21,11 +21,15 @@ class PwRun(
   private[this] var wantClose = false
 
   protected val intf = "this.scalajsSeleniumInternalInterface"
+//
+//  private[this] implicit val ec =
+//    ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
 
-  private[this] implicit val ec =
-    ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
+  implicit val ec: scala.concurrent.ExecutionContext =
+    scala.concurrent.ExecutionContext.global
 
   private val handler = Future {
+
     while (!isInterfaceUp() && !wantClose) {
       Thread.sleep(100)
     }
@@ -55,7 +59,7 @@ class PwRun(
     data.get("consoleLog").forEach(consumer(streams.out.println _))
     data.get("consoleError").forEach(consumer(streams.err.println _))
     data.get("msgs").forEach(consumer(receivedMessage _))
-
+    data.get("consoleLog").forEach{(el) => scribe.debug(s"data el is $el")}
     val errs = data.get("errors")
     if (!errs.isEmpty()) {
       // Convoluted way of writing errs.toList without JavaConverters.

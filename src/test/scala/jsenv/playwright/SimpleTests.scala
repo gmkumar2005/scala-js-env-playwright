@@ -1,5 +1,6 @@
 package jsenv.playwright
 
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.scalajs.jsenv.test.kit.{Run, TestKit}
 import org.scalajs.jsenv.{Input, RunConfig}
@@ -30,9 +31,12 @@ class SimpleTests {
   private def cewithRun(code: String, config: RunConfig = RunConfig())(
       body: Run => Unit
   ) = {
-    if (withCom) cekit.withComRun(code, config)(body)
-    else
+    if (withCom) {
+      cekit.withComRun(code, config)(body)
+    }
+    else {
       cekit.withRun(code, config)(body)
+    }
   }
 
   @Test
@@ -110,7 +114,50 @@ class SimpleTests {
         .closeRun()
     }
   }
+  private val slack = 10.millis
 
+  @Test
+  def basicTimeoutTestCE: Unit = {
 
+    val deadline = (300.millis - slack).fromNow
+
+    cewithRun("""
+      setTimeout(function() { console.log("1"); }, 200);
+      setTimeout(function() { console.log("2"); }, 100);
+      setTimeout(function() { console.log("3"); }, 300);
+      setTimeout(function() { console.log("4"); },   0);
+    """) {
+      _.expectOut("4\n")
+        .expectOut("2\n")
+        .expectOut("1\n")
+        .expectOut("3\n")
+
+        .closeRun()
+    }
+
+    assertTrue("Execution took too little time", deadline.isOverdue())
+  }
+
+  @Test
+  def basicTimeoutTestPW: Unit = {
+
+    val deadline = (300.millis - slack).fromNow
+
+    withRun("""
+      setTimeout(function() { console.log("1"); }, 200);
+      setTimeout(function() { console.log("2"); }, 100);
+      setTimeout(function() { console.log("3"); }, 300);
+      setTimeout(function() { console.log("4"); },   0);
+    """) {
+      _.expectOut("4\n")
+        .expectOut("2\n")
+        .expectOut("1\n")
+        .expectOut("3\n")
+
+        .closeRun()
+    }
+
+    assertTrue("Execution took too little time", deadline.isOverdue())
+  }
 
 }

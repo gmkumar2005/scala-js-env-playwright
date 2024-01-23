@@ -76,12 +76,12 @@ class CERun(
       if (!connectionReady) Resource.pure[IO, Unit](IO.sleep(100.milliseconds))
       else Resource.pure[IO, Unit](IO.unit)
     _ <- isConnectionUp(pageInstance, intf)
-    jsResponse <- fetchMessagesResource(pageInstance, intf)
-    _ <- Resource.pure(scribe.debug(s"jsResponse is $jsResponse"))
     out <- ResourcesFactory.outputStream(runConfig)
-    _ <- Resource.pure[IO, Unit](
-      streamWriter(jsResponse, out, Some(receivedMessage))
-    )
+//    jsResponse <- fetchMessagesResource(pageInstance, intf)
+//    _ <- Resource.pure(scribe.debug(s"jsResponse is $jsResponse"))
+//    _ <- Resource.pure[IO, Unit](
+//      streamWriter(jsResponse, out, Some(receivedMessage))
+//    )
 
     //    while (!wantClose) {
     //    sendAll()
@@ -90,7 +90,7 @@ class CERun(
     //  }
     _ <- ProcessUntilStop(wantToClose, pageInstance, intf, sendQueue, out, receivedMessage, isComEnabled)
   } yield {
-    handleErrors(jsResponse)
+//    handleErrors(jsResponse)
   }
 
   def handleErrors(

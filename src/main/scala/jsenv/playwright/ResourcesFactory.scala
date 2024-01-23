@@ -147,21 +147,17 @@ object ResourcesFactory {
       receivedMessage: String => Unit,
       isComEnabled: Boolean
   ): Resource[IO, Unit] = {
-    Resource.make {
-      IO.unit
-    } { _ =>
-      while (!stopSignal.get() && isComEnabled) {
+    Resource.pure[IO, Unit] {
+      while (!stopSignal.get()) {
         scribe.info(
           s"Calling repeatSendUntilStopSignal with stopSignal = ${stopSignal.get()}"
         )
-        IO.sleep(100.milliseconds)
         sendAll(sendQueue, pageInstance, intf)
         val jsResponse = fetchMessages(pageInstance, intf)
         streamWriter(jsResponse, outStream, Some(receivedMessage))
+        IO.sleep(100.milliseconds)
       }
-      IO.unit
-    }
-  }
+  }}
 
 
   def fetchAndProcess(
@@ -241,8 +237,11 @@ object ResourcesFactory {
       onMessage: Option[String => Unit] = None
   ): Unit = {
     val data = jsResponse.get("consoleLog")
+    scribe.debug(s"Data is $data")
     val consoleError = jsResponse.get("consoleError")
+    scribe.debug(s"consoleError is $consoleError")
     val error = jsResponse.get("errors")
+    scribe.debug(s"error is $error")
     onMessage match {
       case Some(f) =>
         val msgs = jsResponse.get("msgs")
@@ -252,9 +251,15 @@ object ResourcesFactory {
       case None => scribe.info("No onMessage function")
     }
     data.forEach(outStream.out.println _)
+    data.forEach{(el) => scribe.debug(s"data el is $el")}
+
     error.forEach(outStream.out.println _)
+    error.forEach{(el) => scribe.debug(s"error el is $el")}
+
     consoleError.forEach(outStream.out.println _)
-//    val errs = data.get("errors")
+    consoleError.forEach{(el) => scribe.debug(s"consoleError el is $el")}
+
+    //    val errs = data.get("errors")
     if (!error.isEmpty) {
       // Convoluted way of writing errs.toList without JavaConverters.
       val errList = error.toArray(Array[String]()).toList

@@ -49,7 +49,7 @@
         }
     }
 
-    this.scalajsSeleniumInternalInterface = {
+    this.scalajsPlayWrightInternalInterface = {
         fetch: function() {
             var res = {
                 consoleLog: consoleLog.slice(),

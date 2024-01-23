@@ -4,7 +4,7 @@ import org.scalajs.jsenv.RunConfig
 
 import java.io._
 
-private object OutputStreams {
+object OutputStreams {
   final class Streams(val out: PrintStream, val err: PrintStream) {
     def close(): Unit = {
       out.close()

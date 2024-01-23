@@ -1,84 +1,76 @@
 package jsenv.playwright
 
+import jsenv.playwright.PWEnv.Config
 import org.scalajs.jsenv._
-import scribe.format.{FormatterInterpolator, date, level, mdc, messages, methodName, threadName}
 
 import java.net.{URI, URL}
 import java.nio.file.{Path, Paths}
+import scala.util.control.NonFatal
 
-final class PWEnv(
-                   browserName: String,
-                   headless: Boolean,
-                   showLogs: Boolean = false,
-                   config: PWEnv.Config
+class PWEnv(
+             browserName: String = "chromium",
+             headless: Boolean = true,
+             showLogs: Boolean = false,
+             debug: Boolean = false,
+             pwConfig: Config = Config()
 ) extends JSEnv {
-//  private val formatter =
-//    formatter"$date [$threadName] $level $position - $messages$mdc"
 
-  private val formatter =
-    formatter"$date [$threadName] $level $methodName - $messages$mdc"
-
-  if (showLogs) {
-    scribe.Logger.root
-      .clearHandlers()
-      .withHandler(
-        formatter = formatter,
-        minimumLevel = Some(scribe.Level.Info)
-      )
-      .replace()
-    scribe.Logger.root.withMinimumLevel(scribe.Level.Info).replace()
-  } else {
-    scribe.Logger.root
-      .clearHandlers()
-      .withHandler(
-        formatter = formatter,
-        minimumLevel = Some(scribe.Level.Error)
-      )
-      .replace()
-    scribe.Logger.root.withMinimumLevel(scribe.Level.Error).replace()
+  private lazy val validator = {
+    RunConfig
+      .Validator()
+      .supportsInheritIO()
+      .supportsOnOutputStream()
   }
-  def this(browserName: String) = {
-    this(browserName, headless = true,showLogs = false,PWEnv.Config())
+  override val name: String = s"CEEnv with $browserName"
+  CEUtils.setupLogger(showLogs, debug)
+
+  override def start(input: Seq[Input], runConfig: RunConfig): JSRun = {
+    try {
+      validator.validate(runConfig)
+      new CERun(browserName, headless, pwConfig, runConfig, input)
+    } catch {
+      case ve: java.lang.IllegalArgumentException =>
+        scribe.error(s"CEEnv.startWithCom failed with throw ve $ve")
+        throw ve
+      case NonFatal(t) =>
+        scribe.error(s"CEEnv.start failed with $t")
+        JSRun.failed(t)
+    }
   }
 
-  def this(browserName: String, headless: Boolean) = {
-    this(browserName, headless, showLogs = false,PWEnv.Config())
-  }
-  def this(browserName: String, headless: Boolean, showLogs:Boolean) = {
-    this(browserName, headless, showLogs,PWEnv.Config())
-  }
-  val name: String = s"PWEnv ($browserName)"
-
-  def start(input: Seq[Input], runConfig: RunConfig): JSRun =
-    PwRun.start(newDriver _, input, config, runConfig)
-
-  def startWithCom(
+  override def startWithCom(
       input: Seq[Input],
       runConfig: RunConfig,
       onMessage: String => Unit
-  ): JSComRun =
-    PwRun.startWithCom(newDriver _, input, config, runConfig, onMessage)
-
-  private def newDriver(): PWDriver = {
-    // Use custom DriverJar when initializing playwright
-    System.setProperty("playwright.driver.impl", "jsenv.DriverJar")
-    config.driverFactory.pageBuilder(browserName, headless)
+  ): JSComRun = {
+    try {
+      validator.validate(runConfig)
+      new CEComRun(
+        browserName,
+        headless,
+        pwConfig,
+        runConfig,
+        input,
+        onMessage
+      )
+    } catch {
+      case ve: java.lang.IllegalArgumentException =>
+        scribe.error(s"CEEnv.startWithCom failed with throw ve $ve")
+        throw ve
+      case NonFatal(t) =>
+        scribe.error(s"CEEnv.startWithCom failed with $t")
+        JSComRun.failed(t)
+    }
   }
+
 }
 
 object PWEnv {
-
-  final class Config private (
-      val driverFactory: DriverFactory,
-      val keepAlive: Boolean,
-      val materialization: Config.Materialization
-  ) {
+  final class Config private (val materialization: Config.Materialization) {
     import Config.Materialization
 
     private def this() = this(
-      keepAlive = false,
-      materialization = Config.Materialization.Temp,
-      driverFactory = new DefaultDriverFactory()
+      materialization = Config.Materialization.Temp
     )
 
     /** Materializes purely virtual files into a temp directory.
@@ -137,18 +129,10 @@ object PWEnv {
     def withMaterialization(materialization: Materialization): Config =
       copy(materialization = materialization)
 
-    def withKeepAlive(keepAlive: Boolean): Config =
-      copy(keepAlive = keepAlive)
-
-    def withDriverFactory(driverFactory: DriverFactory): Config =
-      copy(driverFactory = driverFactory)
-
     private def copy(
-        keepAlive: Boolean = keepAlive,
-        materialization: Config.Materialization = materialization,
-        driverFactory: DriverFactory = driverFactory
-    ) = {
-      new Config(driverFactory, keepAlive, materialization)
+        materialization: Config.Materialization = materialization
+    ): Config = {
+      new Config(materialization)
     }
   }
 

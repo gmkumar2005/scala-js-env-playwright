@@ -60,6 +60,9 @@ jsEnv := new jsenv.playwright.PWEnv(
 It is work in progress.
 As a workaround introducing delay in the test cases may help to keep the browser alive. 
 
+## Debugging
+debug parameter can be passed to the PWEnv constructor to enable debugging. It will also display the version of the browser which is used.
+```scala
 ## Wiki
 Watch this space for more details on how to use this library.
 

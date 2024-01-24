@@ -69,5 +69,3 @@ lazy val root = (project in file("."))
     Test / publishArtifact := false,
     usePgpKeyHex("F7E440260BAE93EB4AD2723D6613CA76E011F638")
   )
-
-

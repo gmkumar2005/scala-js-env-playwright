@@ -31,14 +31,14 @@ class CERun(
   // receivedMessage is called only from JSComRun. Hence its implementation is empty in CERun
   protected def receivedMessage(msg: String): Unit = ()
 
-  /** A [[scala.concurrent.Future Future]] that completes if the run completes.
+  /** A Future that completes if the run completes.
     *
     * The future is failed if the run fails.
     *
-    * Note that a [[JSRun]] is not required to ever terminate on it's own. That
+    * Note that a JSRun is not required to ever terminate on it's own. That
     * means even if all code is executed and the event loop is empty, the run
     * may continue to run. As a consequence, it is *not* correct to rely on
-    * termination of a [[JSRun]] without any external means of stopping it (i.e.
+    * termination of a JSRun without any external means of stopping it (i.e.
     * calling [[close]]).
     */
   var wantToClose = new AtomicBoolean(false)
@@ -112,7 +112,7 @@ class CERun(
     * Whether or not this makes the run fail or not is up to the implementation.
     * However, in the following cases, calling [[close]] may not fail the run:
     * <ul> <li>[[future]] is already completed when [[close]] is called.
-    * <li>This is a [[JSComRun]] and the event loop inside the VM is empty.
+    * <li>This is a [[CERun]] and the event loop inside the VM is empty.
     * </ul>
     *
     * Idempotent, async, nothrow.

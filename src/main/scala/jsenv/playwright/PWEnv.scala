@@ -22,6 +22,7 @@ class PWEnv(
       .supportsOnOutputStream()
   }
   override val name: String = s"CEEnv with $browserName"
+  System.setProperty("playwright.driver.impl", "jsenv.DriverJar")
   CEUtils.setupLogger(showLogs, debug)
 
   override def start(input: Seq[Input], runConfig: RunConfig): JSRun = {

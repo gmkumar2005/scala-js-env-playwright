@@ -63,9 +63,17 @@ As a workaround introducing delay in the test cases may help to keep the browser
 ## Debugging
 debug parameter can be passed to the PWEnv constructor to enable debugging. It will also display the version of the browser which is used.
 ```scala
+Test / jsEnv := new PWEnv(
+      browserName = "chrome",
+      headless = true,
+      showLogs = true,
+      debug = true
+    )
+```
+
 ## Wiki
 Watch this space for more details on how to use this library.
 
 ## References
 * Sample project using this JSEnv: https://github.com/gmkumar2005/scalajs-sbt-vite-laminar-chartjs-example
-
+* Fork of Laminar: https://github.com/gmkumar2005/Laminar

@@ -52,11 +52,10 @@ lazy val root = (project in file("."))
       setReleaseVersion,
       commitReleaseVersion,
       tagRelease,
-      publishArtifacts,
+      ReleaseStep(action = Command.process("publishSigned", _)),
       setNextVersion,
       commitNextVersion
     ),
-//    publishTo := sonatypePublishToBundle.value,
     publishTo := {
       val nexus = "https://s01.oss.sonatype.org/"
       if (isSnapshot.value)
@@ -66,36 +65,9 @@ lazy val root = (project in file("."))
     },
     // For all Sonatype accounts created on or after February 2021
     sonatypeCredentialHost := "s01.oss.sonatype.org",
-//    pomExtra := _pomExtra,
     Test / parallelExecution := false,
     Test / publishArtifact := false,
     usePgpKeyHex("F7E440260BAE93EB4AD2723D6613CA76E011F638")
-
-//    sonatypeRepository := "https://oss.sonatype.org/service/local"
-//    sonatypeRepository := "https://s01.oss.sonatype.org/service/local"
   )
 
-val _pomExtra =
-  <url>https://github.com/gmkumar2005/scala-js-env-playwright</url>
-  <licenses>
-    <license>
-      <name>Apache License, Version 2.0</name>
-      <url>http://www.apache.org/licenses/LICENSE-2.0.html</url>
-      <distribution>repo</distribution>
-    </license>
-  </licenses>
-  <scm>
-    <url>git@github.com:gmkumar2005/scala-js-env-playwright.git</url>
-    <connection>scm:git:git@github.com:gmkumar2005/scala-js-env-playwright.git</connection>
-  </scm>
-  <developers>
-    <developer>
-      <id>gmkumar2005</id>
-      <name>Kiran Kumar</name>
-      <url>https://github.com/gmkumar2005</url>
-    </developer>
-  </developers>
-    <issueManagement>
-      <system>GitHub</system>
-      <url>https://github.com/gmkumar2005/scala-js-env-playwright/issues</url>
-    </issueManagement>
+

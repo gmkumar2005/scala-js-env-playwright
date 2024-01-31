@@ -72,6 +72,7 @@ object ResourcesFactory {
   ): Resource[IO, Boolean] = {
     Resource.pure[IO, Boolean] {
       scribe.debug(s"Page instance is ${pageInstance.hashCode()}")
+      scribe.debug(s"Evaluate !!$intf;")
       pageInstance.evaluate(s"!!$intf;").asInstanceOf[Boolean]
     }
 
@@ -140,10 +141,15 @@ object ResourcesFactory {
   ): Unit = {
     val msg = sendQueue.poll()
     if (msg != null) {
-      scribe.debug(s"Sending message ${msg.take(100)}")
+      scribe.debug(s"Sending message ${msg}")
       val script = s"$intf.send(arguments[0]);"
       val wrapper = s"function(arg) { $script }"
+      scribe.debug(s"Evaluate $wrapper ${pageInstance.hashCode()}")
       pageInstance.evaluate(s"$wrapper", msg)
+      val pwDebug = sys.env.getOrElse("PWDEBUG", "0")
+      if (pwDebug == "1") {
+        pageInstance.pause()
+      }
       sendAll(sendQueue, pageInstance, intf)
     }
   }

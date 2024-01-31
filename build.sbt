@@ -41,7 +41,7 @@ lazy val root = (project in file("."))
       "com.google.jimfs" % "jimfs" % "1.2",
       "com.outr" %% "scribe" % "3.13.0",
       "org.typelevel" %% "cats-effect" % "3.5.2",
-      "org.scala-js" %% "scalajs-js-envs-test-kit" % "1.1.1" % Test,
+      "org.scala-js" %% "scalajs-js-envs-test-kit" % "1.4.0" % Test,
       "com.novocode" % "junit-interface" % "0.11" % Test
     ),
     releaseProcess := Seq[ReleaseStep](

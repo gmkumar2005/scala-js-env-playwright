@@ -1,7 +1,7 @@
 package jsenv.playwright
 
 import org.scalajs.jsenv.{Input, UnsupportedInputException}
-import scribe.format.{FormatterInterpolator, dateFull, level, mdc, messages, methodName, threadName}
+import scribe.format.{FormatterInterpolator, className, dateFull, level, mdc, messages, methodName, threadName}
 
 import java.nio.file.Path
 
@@ -12,6 +12,7 @@ object CEUtils {
   ): String = {
     val tags = fullInput.map {
       case Input.Script(path) => makeTag(path, "text/javascript", materializer)
+      case Input.CommonJSModule(path) => makeTag(path, "text/javascript", materializer)
       case Input.ESModule(path) => makeTag(path, "module", materializer)
       case _ => throw new UnsupportedInputException(fullInput)
     }
@@ -36,7 +37,7 @@ object CEUtils {
 
   def setupLogger(showLogs: Boolean, debug: Boolean): Unit = {
     val formatter =
-      formatter"$dateFull [$threadName] $level $methodName - $messages$mdc"
+      formatter"$dateFull [$threadName] $className $level $methodName - $messages$mdc"
     scribe.Logger.root
       .clearHandlers()
       .withHandler(

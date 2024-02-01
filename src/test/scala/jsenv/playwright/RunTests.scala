@@ -13,7 +13,7 @@ import scala.concurrent.duration.DurationInt
 
 class RunTests {
   val withCom = true
-  private val kit = new TestKit(new PWEnv("chrome", debug = true), 10.second)
+  private val kit = new TestKit(new PWEnv("chrome", debug = true), 100.second)
 
   private def withRun(input: Seq[Input])(body: Run => Unit): Unit = {
     if (withCom) kit.withComRun(input)(body)

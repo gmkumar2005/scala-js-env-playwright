@@ -3,7 +3,9 @@ package jsenv.playwright
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import jsenv.playwright.PWEnv.Config
-import org.scalajs.jsenv.{Input, JSComRun, RunConfig}
+import org.scalajs.jsenv.Input
+import org.scalajs.jsenv.JSComRun
+import org.scalajs.jsenv.RunConfig
 
 import scala.concurrent._
 

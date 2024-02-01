@@ -129,7 +129,7 @@ public class DriverJar extends Driver {
         URI uri = maybeExtractNestedJar(originalUri);
 
         // Create zip filesystem if loading from jar.
-        try (FileSystem fileSystem = "jar".equals(uri.getScheme()) ? initFileSystem(uri) : null) {
+        FileSystem fileSystem = "jar".equals(uri.getScheme()) ? initFileSystem(uri) : null;
             Path srcRoot = Paths.get(uri);
             // jar file system's .relativize gives wrong results when used with
             // spring-boot-maven-plugin, convert to the default filesystem to
@@ -159,6 +159,8 @@ public class DriverJar extends Driver {
                     throw new RuntimeException("Failed to extract driver from " + uri + ", full uri: " + originalUri, e);
                 }
             });
+        if (fileSystem != null) {
+            fileSystem.close();
         }
     }
 
@@ -173,7 +175,8 @@ public class DriverJar extends Driver {
         }
         String innerJar = String.join(JAR_URL_SEPARATOR, parts[0], parts[1]);
         URI jarUri = new URI(innerJar);
-        try (FileSystem fs = FileSystems.newFileSystem(jarUri, Collections.emptyMap())) {
+        try {
+            FileSystem fs = FileSystems.newFileSystem(jarUri, Collections.emptyMap());
             Path fromPath = Paths.get(jarUri);
             Path toPath = driverTempDir.resolve(fromPath.getFileName().toString());
             Files.copy(fromPath, toPath);

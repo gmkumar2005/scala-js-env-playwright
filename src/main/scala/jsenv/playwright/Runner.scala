@@ -1,15 +1,16 @@
 package jsenv.playwright
 
-import cats.effect.{IO, Resource}
+import cats.effect.IO
+import cats.effect.Resource
 import com.microsoft.playwright.BrowserType.LaunchOptions
 import jsenv.playwright.PWEnv.Config
 import jsenv.playwright.PageFactory._
 import jsenv.playwright.ResourcesFactory._
-import org.scalajs.jsenv.{Input, RunConfig}
+import org.scalajs.jsenv.Input
+import org.scalajs.jsenv.RunConfig
 
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
-import scala.concurrent._
 import scala.concurrent.duration.DurationInt
 
 trait Runner {
@@ -24,7 +25,7 @@ trait Runner {
   protected val intf = "this.scalajsPlayWrightInternalInterface"
   protected val sendQueue = new ConcurrentLinkedQueue[String]
   // receivedMessage is called only from JSComRun. Hence its implementation is empty in CERun
-  protected def receivedMessage(msg: String): Unit = ()
+  protected  def receivedMessage(msg: String): Unit
   var wantToClose = new AtomicBoolean(false)
   // List of programs
   // 1. isInterfaceUp()
@@ -82,8 +83,7 @@ trait Runner {
       intf,
       sendQueue,
       out,
-      receivedMessage,
-      isComEnabled
+      receivedMessage
     )
   } yield ()
 

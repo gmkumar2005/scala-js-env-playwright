@@ -65,7 +65,7 @@ lazy val root = (project in file("."))
     },
     // For all Sonatype accounts created on or after February 2021
     sonatypeCredentialHost := "s01.oss.sonatype.org",
-    Test / parallelExecution := false,
+    Test / parallelExecution := true,
     Test / publishArtifact := false,
     usePgpKeyHex("F7E440260BAE93EB4AD2723D6613CA76E011F638")
   )

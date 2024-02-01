@@ -1,17 +1,15 @@
 package jsenv.playwright
 
-import org.scalajs.jsenv.{Input, UnsupportedInputException}
-import scribe.format.{
-  className,
-  classNameSimple,
-  dateFull,
-  level,
-  mdc,
-  messages,
-  methodName,
-  threadName,
-  FormatterInterpolator
-}
+import org.scalajs.jsenv.Input
+import org.scalajs.jsenv.UnsupportedInputException
+import scribe.format.FormatterInterpolator
+import scribe.format.classNameSimple
+import scribe.format.dateFull
+import scribe.format.level
+import scribe.format.mdc
+import scribe.format.messages
+import scribe.format.methodName
+import scribe.format.threadName
 
 import java.nio.file.Path
 

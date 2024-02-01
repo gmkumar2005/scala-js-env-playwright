@@ -3,8 +3,10 @@ package jsenv.playwright
 import jsenv.playwright.PWEnv.Config
 import org.scalajs.jsenv._
 
-import java.net.{URI, URL}
-import java.nio.file.{Path, Paths}
+import java.net.URI
+import java.net.URL
+import java.nio.file.Path
+import java.nio.file.Paths
 import scala.util.control.NonFatal
 
 class PWEnv(

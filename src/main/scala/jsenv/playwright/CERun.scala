@@ -3,7 +3,9 @@ package jsenv.playwright
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import jsenv.playwright.PWEnv.Config
-import org.scalajs.jsenv.{Input, JSRun, RunConfig}
+import org.scalajs.jsenv.Input
+import org.scalajs.jsenv.JSRun
+import org.scalajs.jsenv.RunConfig
 
 import scala.concurrent._
 
@@ -20,4 +22,6 @@ class CERun(
     jsRunPrg(browserName, headless, isComEnabled = false, None)
       .use(_ => IO.unit)
       .unsafeToFuture()
+
+  override protected def receivedMessage(msg: String): Unit = ()
 }

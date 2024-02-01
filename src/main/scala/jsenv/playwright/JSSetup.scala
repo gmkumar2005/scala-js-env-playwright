@@ -3,7 +3,8 @@ package jsenv.playwright
 import com.google.common.jimfs.Jimfs
 
 import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path}
+import java.nio.file.Files
+import java.nio.file.Path
 
 private object JSSetup {
   def setupFile(enableCom: Boolean): Path = {

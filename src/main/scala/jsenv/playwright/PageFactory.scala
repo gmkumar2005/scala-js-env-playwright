@@ -1,8 +1,12 @@
 package jsenv.playwright
 
-import cats.effect.{IO, Resource}
+import cats.effect.IO
+import cats.effect.Resource
+import com.microsoft.playwright.Browser
+import com.microsoft.playwright.BrowserType
 import com.microsoft.playwright.BrowserType.LaunchOptions
-import com.microsoft.playwright.{Browser, BrowserType, Page, Playwright}
+import com.microsoft.playwright.Page
+import com.microsoft.playwright.Playwright
 
 import scala.jdk.CollectionConverters.seqAsJavaListConverter
 object PageFactory {

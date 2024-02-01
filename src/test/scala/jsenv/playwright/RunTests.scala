@@ -3,7 +3,8 @@ package jsenv.playwright
 import com.google.common.jimfs.Jimfs
 import org.junit.Test
 import org.scalajs.jsenv._
-import org.scalajs.jsenv.test.kit.{Run, TestKit}
+import org.scalajs.jsenv.test.kit.Run
+import org.scalajs.jsenv.test.kit.TestKit
 
 import java.io.File
 import java.nio.charset.StandardCharsets

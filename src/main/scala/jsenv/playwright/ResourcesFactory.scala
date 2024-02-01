@@ -1,9 +1,11 @@
 package jsenv.playwright
 
-import cats.effect.{IO, Resource}
+import cats.effect.IO
+import cats.effect.Resource
 import com.microsoft.playwright.Page
 import jsenv.playwright.PWEnv.Config
-import org.scalajs.jsenv.{Input, RunConfig}
+import org.scalajs.jsenv.Input
+import org.scalajs.jsenv.RunConfig
 
 import java.util
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -53,8 +55,7 @@ object ResourcesFactory {
       intf: String,
       sendQueue: ConcurrentLinkedQueue[String],
       outStream: OutputStreams.Streams,
-      receivedMessage: String => Unit,
-      isComEnabled: Boolean
+      receivedMessage: String => Unit
   ): Resource[IO, Unit] = {
     Resource.pure[IO, Unit] {
       scribe.debug(s"Started processUntilStop")

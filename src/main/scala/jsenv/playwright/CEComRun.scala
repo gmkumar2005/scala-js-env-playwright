@@ -17,9 +17,7 @@ class CEComRun(
     onMessage: String => Unit
 ) extends JSComRun
     with Runner {
-  scribe.debug(s"Creating CEComRun")
-  logStackTrace()
-  scribe.debug(s"runConfig is ${runConfig} and input is ${input} and stream is ${runConfig.onOutputStream.hashCode()}")
+  scribe.debug(s"Creating CEComRun for $browserName")
   // enableCom is false for CERun and true for CEComRun
   // send is called only from JSComRun
   override def send(msg: String): Unit = sendQueue.offer(msg)
@@ -31,8 +29,6 @@ class CEComRun(
       .use(_ => IO.unit)
       .unsafeToFuture()
 
-
 }
 
-private class WindowOnErrorException(errs: List[String])
-    extends Exception(s"JS error: $errs")
+private class WindowOnErrorException(errs: List[String]) extends Exception(s"JS error: $errs")

@@ -8,18 +8,15 @@ import java.nio.file.{Path, Paths}
 import scala.util.control.NonFatal
 
 class PWEnv(
-             browserName: String = "chromium",
-             headless: Boolean = true,
-             showLogs: Boolean = false,
-             debug: Boolean = false,
-             pwConfig: Config = Config()
+    browserName: String = "chromium",
+    headless: Boolean = true,
+    showLogs: Boolean = false,
+    debug: Boolean = false,
+    pwConfig: Config = Config()
 ) extends JSEnv {
 
   private lazy val validator = {
-    RunConfig
-      .Validator()
-      .supportsInheritIO()
-      .supportsOnOutputStream()
+    RunConfig.Validator().supportsInheritIO().supportsOnOutputStream()
   }
   override val name: String = s"CEEnv with $browserName"
   System.setProperty("playwright.driver.impl", "jsenv.DriverJar")
@@ -74,56 +71,59 @@ object PWEnv {
       materialization = Config.Materialization.Temp
     )
 
-    /** Materializes purely virtual files into a temp directory.
-      *
-      * Materialization is necessary so that virtual files can be referred to by
-      * name. If you do not know/care how your files are referred to, this is a
-      * good default choice. It is also the default of [[PWEnv.Config]].
-      */
+    /**
+     * Materializes purely virtual files into a temp directory.
+     *
+     * Materialization is necessary so that virtual files can be referred to by name. If you do
+     * not know/care how your files are referred to, this is a good default choice. It is also
+     * the default of [[PWEnv.Config]].
+     */
     def withMaterializeInTemp: Config =
       copy(materialization = Materialization.Temp)
 
-    /** Materializes files in a static directory of a user configured server.
-      *
-      * This can be used to bypass cross origin access policies.
-      *
-      * @param contentDir
-      *   Static content directory of the server. The files will be put here.
-      *   Will get created if it doesn't exist.
-      * @param webRoot
-      *   URL making `contentDir` accessible thorugh the server. This must have
-      *   a trailing slash to be interpreted as a directory.
-      *
-      * @example
-      *
-      * The following will make the browser fetch files using the http:// schema
-      * instead of the file:// schema. The example assumes a local webserver is
-      * running and serving the ".tmp" directory at http://localhost:8080.
-      *
-      * {{{
-      *  jsSettings(
-      *    jsEnv := new SeleniumJSEnv(
-      *        new org.openqa.selenium.firefox.FirefoxOptions(),
-      *        SeleniumJSEnv.Config()
-      *          .withMaterializeInServer(".tmp", "http://localhost:8080/")
-      *    )
-      *  )
-      * }}}
-      */
+    /**
+     * Materializes files in a static directory of a user configured server.
+     *
+     * This can be used to bypass cross origin access policies.
+     *
+     * @param contentDir
+     *   Static content directory of the server. The files will be put here. Will get created if
+     *   it doesn't exist.
+     * @param webRoot
+     *   URL making `contentDir` accessible thorugh the server. This must have a trailing slash
+     *   to be interpreted as a directory.
+     *
+     * @example
+     *
+     * The following will make the browser fetch files using the http:// schema instead of the
+     * file:// schema. The example assumes a local webserver is running and serving the ".tmp"
+     * directory at http://localhost:8080.
+     *
+     * {{{
+     *  jsSettings(
+     *    jsEnv := new SeleniumJSEnv(
+     *        new org.openqa.selenium.firefox.FirefoxOptions(),
+     *        SeleniumJSEnv.Config()
+     *          .withMaterializeInServer(".tmp", "http://localhost:8080/")
+     *    )
+     *  )
+     * }}}
+     */
     def withMaterializeInServer(contentDir: String, webRoot: String): Config =
       withMaterializeInServer(Paths.get(contentDir), new URI(webRoot).toURL)
 
-    /** Materializes files in a static directory of a user configured server.
-      *
-      * Version of `withMaterializeInServer` with stronger typing.
-      *
-      * @param contentDir
-      *   Static content directory of the server. The files will be put here.
-      *   Will get created if it doesn't exist.
-      * @param webRoot
-      *   URL making `contentDir` accessible thorugh the server. This must have
-      *   a trailing slash to be interpreted as a directory.
-      */
+    /**
+     * Materializes files in a static directory of a user configured server.
+     *
+     * Version of `withMaterializeInServer` with stronger typing.
+     *
+     * @param contentDir
+     *   Static content directory of the server. The files will be put here. Will get created if
+     *   it doesn't exist.
+     * @param webRoot
+     *   URL making `contentDir` accessible thorugh the server. This must have a trailing slash
+     *   to be interpreted as a directory.
+     */
     def withMaterializeInServer(contentDir: Path, webRoot: URL): Config =
       copy(materialization = Materialization.Server(contentDir, webRoot))
 
@@ -143,8 +143,7 @@ object PWEnv {
     abstract class Materialization private ()
     object Materialization {
       final case object Temp extends Materialization
-      final case class Server(contentDir: Path, webRoot: URL)
-          extends Materialization {
+      final case class Server(contentDir: Path, webRoot: URL) extends Materialization {
         require(
           webRoot.getPath.endsWith("/"),
           "webRoot must end with a slash (/)"

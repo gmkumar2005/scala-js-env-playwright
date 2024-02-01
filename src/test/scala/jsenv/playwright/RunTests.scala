@@ -1,4 +1,3 @@
-
 package jsenv.playwright
 
 import com.google.common.jimfs.Jimfs
@@ -13,7 +12,7 @@ import scala.concurrent.duration.DurationInt
 
 class RunTests {
   val withCom = true
-  private val kit = new TestKit(new PWEnv("chrome",debug = true), 10.second)
+  private val kit = new TestKit(new PWEnv("chrome", debug = true), 10.second)
 
   private def withRun(input: Seq[Input])(body: Run => Unit): Unit = {
     if (withCom) kit.withComRun(input)(body)
@@ -21,7 +20,7 @@ class RunTests {
   }
 
   private def withRun(code: String, config: RunConfig = RunConfig())(
-    body: Run => Unit
+      body: Run => Unit
   ): Unit = {
     if (withCom) kit.withComRun(code, config)(body)
     else kit.withRun(code, config)(body)
@@ -60,24 +59,21 @@ class RunTests {
         console.log(e);
       }
     """) {
-      _.expectOut("hello world\n")
-        .closeRun()
+      _.expectOut("hello world\n").closeRun()
     }
   }
 
   @Test // Failed in Phantom - #2053
   def utf8Test(): Unit = {
     withRun("console.log('\u1234')") {
-      _.expectOut("\u1234\n")
-        .closeRun()
+      _.expectOut("\u1234\n").closeRun()
     }
   }
 
   @Test
   def allowScriptTags(): Unit = {
     withRun("""console.log("<script></script>");""") {
-      _.expectOut("<script></script>\n")
-        .closeRun()
+      _.expectOut("<script></script>\n").closeRun()
     }
   }
 
@@ -99,8 +95,7 @@ class RunTests {
     val result = strings.mkString("", "\n", "\n")
 
     withRun(code) {
-      _.expectOut(result)
-        .closeRun()
+      _.expectOut(result).closeRun()
     }
   }
 
@@ -149,8 +144,7 @@ class RunTests {
       )
 
       withRun(Input.Script(tmpPath) :: Nil) {
-        _.expectOut("test\n")
-          .closeRun()
+        _.expectOut("test\n").closeRun()
       }
     } finally {
       tmpFile.delete()

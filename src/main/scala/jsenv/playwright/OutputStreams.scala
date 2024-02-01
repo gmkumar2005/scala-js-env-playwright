@@ -34,8 +34,7 @@ object OutputStreams {
     }
   }
 
-  private class UnownedOutputStream(out: OutputStream)
-      extends FilterOutputStream(out) {
+  private class UnownedOutputStream(out: OutputStream) extends FilterOutputStream(out) {
     override def close(): Unit = flush()
   }
 }

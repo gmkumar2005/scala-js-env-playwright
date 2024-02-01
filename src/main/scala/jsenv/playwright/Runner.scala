@@ -19,7 +19,6 @@ trait Runner {
   val runConfig: RunConfig = RunConfig() // or provide actual values
   val input: Seq[Input] = Seq.empty // or provide actual values
 
-
   // enableCom is false for CERun and true for CEComRun
   protected val enableCom = false
   protected val intf = "this.scalajsPlayWrightInternalInterface"
@@ -44,11 +43,11 @@ trait Runner {
   // After future is completed close driver, streams, materializer
 
   def jsRunPrg(
-                browserName: String,
-                headless: Boolean,
-                isComEnabled: Boolean,
-                launchOptions: Option[LaunchOptions]
-              ): Resource[IO, Unit] = for {
+      browserName: String,
+      headless: Boolean,
+      isComEnabled: Boolean,
+      launchOptions: Option[LaunchOptions]
+  ): Resource[IO, Unit] = for {
     _ <- Resource.pure(
       scribe.info(
         s"Begin Main with isComEnabled $isComEnabled " +
@@ -69,9 +68,13 @@ trait Runner {
     )
     connectionReady <- isConnectionUp(pageInstance, intf)
     _ <-
-      if (!connectionReady) Resource.pure[IO, Unit](IO.sleep(100.milliseconds))
+      if (!connectionReady) Resource.pure[IO, Unit] {
+        IO.sleep(100.milliseconds)
+      }
       else Resource.pure[IO, Unit](IO.unit)
-    _ <- isConnectionUp(pageInstance, intf)
+    _ <-
+      if (!connectionReady) isConnectionUp(pageInstance, intf)
+      else Resource.pure[IO, Unit](IO.unit)
     out <- outputStream(runConfig)
     _ <- processUntilStop(
       wantToClose,
@@ -84,22 +87,22 @@ trait Runner {
     )
   } yield ()
 
-  /** Stops the run and releases all the resources.
+  /**
+   * Stops the run and releases all the resources.
    *
-   * This <strong>must</strong> be called to ensure the run's resources are
-   * released.
+   * This <strong>must</strong> be called to ensure the run's resources are released.
    *
-   * Whether or not this makes the run fail or not is up to the implementation.
-   * However, in the following cases, calling [[close]] may not fail the run:
-   * <ul> <li>[[future]] is already completed when [[close]] is called.
-   * <li>This is a [[CERun]] and the event loop inside the VM is empty. </ul>
+   * Whether or not this makes the run fail or not is up to the implementation. However, in the
+   * following cases, calling [[close]] may not fail the run: <ul> <li>[[Future]] is already
+   * completed when [[close]] is called. <li>This is a [[CERun]] and the event loop inside the
+   * VM is empty. </ul>
    *
    * Idempotent, async, nothrow.
    */
 
   def close(): Unit = {
     wantToClose.set(true)
-    scribe.info(s"StopSignal is ${wantToClose.get()}")
+    scribe.info(s"Received stopSignal ${wantToClose.get()}")
   }
 
   def getCaller: String = {
@@ -111,6 +114,7 @@ trait Runner {
       "Could not determine caller."
     }
   }
+
   def logStackTrace(): Unit = {
     try {
       throw new Exception("Logging stack trace")

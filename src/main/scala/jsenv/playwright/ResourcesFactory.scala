@@ -57,12 +57,14 @@ object ResourcesFactory {
       isComEnabled: Boolean
   ): Resource[IO, Unit] = {
     Resource.pure[IO, Unit] {
+      scribe.debug(s"Started processUntilStop")
       while (!stopSignal.get()) {
         sendAll(sendQueue, pageInstance, intf)
         val jsResponse = fetchMessages(pageInstance, intf)
         streamWriter(jsResponse, outStream, Some(receivedMessage))
         IO.sleep(100.milliseconds)
       }
+      scribe.debug(s"Stop processUntilStop")
     }
   }
 
@@ -71,9 +73,11 @@ object ResourcesFactory {
       intf: String
   ): Resource[IO, Boolean] = {
     Resource.pure[IO, Boolean] {
-      scribe.debug(s"Page instance is ${pageInstance.hashCode()}")
-      scribe.debug(s"Evaluate !!$intf;")
-      pageInstance.evaluate(s"!!$intf;").asInstanceOf[Boolean]
+      val status = pageInstance.evaluate(s"!!$intf;").asInstanceOf[Boolean]
+      scribe.debug(
+        s"Page instance is ${pageInstance.hashCode()} with status $status"
+      )
+      status
     }
 
   }
@@ -141,10 +145,9 @@ object ResourcesFactory {
   ): Unit = {
     val msg = sendQueue.poll()
     if (msg != null) {
-      scribe.debug(s"Sending message ${msg}")
+      scribe.debug(s"Sending message")
       val script = s"$intf.send(arguments[0]);"
       val wrapper = s"function(arg) { $script }"
-      scribe.debug(s"Evaluate $wrapper ${pageInstance.hashCode()}")
       pageInstance.evaluate(s"$wrapper", msg)
       val pwDebug = sys.env.getOrElse("PWDEBUG", "0")
       if (pwDebug == "1") {
@@ -154,4 +157,11 @@ object ResourcesFactory {
     }
   }
   private def consumer[A](f: A => Unit): Consumer[A] = (v: A) => f(v)
+  private def logStackTrace(): Unit = {
+    try {
+      throw new Exception("Logging stack trace")
+    } catch {
+      case e: Exception => e.printStackTrace()
+    }
+  }
 }

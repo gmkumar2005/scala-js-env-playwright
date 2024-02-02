@@ -4,14 +4,20 @@ import java.net._
 import java.nio.file._
 import java.util
 
-abstract class FileMaterializer extends AutoCloseable{
+abstract class FileMaterializer extends AutoCloseable {
   private val tmpSuffixRE = """[a-zA-Z0-9-_.]*$""".r
 
   private var tmpFiles: List[Path] = Nil
 
   def materialize(path: Path): URL = {
     val tmp = newTmp(path.toString)
+    // if file with extension .map exist then copy it too
+    val mapPath = Paths.get(path.toString + ".map")
     Files.copy(path, tmp, StandardCopyOption.REPLACE_EXISTING)
+    if (Files.exists(mapPath)) {
+      val tmpMap = newTmp(mapPath.toString)
+      Files.copy(mapPath, tmpMap, StandardCopyOption.REPLACE_EXISTING)
+    }
     toURL(tmp)
   }
 
@@ -48,7 +54,9 @@ object FileMaterializer {
   }
 }
 
-/** materializes virtual files in a temp directory (uses file:// schema). */
+/**
+ * materializes virtual files in a temp directory (uses file:// schema).
+ */
 private class TempDirFileMaterializer extends FileMaterializer {
   override def materialize(path: Path): URL = {
     try {
@@ -59,7 +67,8 @@ private class TempDirFileMaterializer extends FileMaterializer {
     }
   }
 
-  protected def createTmp(suffix: String): Path = Files.createTempFile(null, suffix)
+  protected def createTmp(suffix: String): Path =
+    Files.createTempFile(null, suffix)
   protected def toURL(file: Path): URL = file.toUri.toURL
 }
 

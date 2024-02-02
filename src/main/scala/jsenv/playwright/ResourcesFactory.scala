@@ -1,9 +1,11 @@
 package jsenv.playwright
 
-import cats.effect.{IO, Resource}
+import cats.effect.IO
+import cats.effect.Resource
 import com.microsoft.playwright.Page
 import jsenv.playwright.PWEnv.Config
-import org.scalajs.jsenv.{Input, RunConfig}
+import org.scalajs.jsenv.Input
+import org.scalajs.jsenv.RunConfig
 
 import java.util
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -53,16 +55,17 @@ object ResourcesFactory {
       intf: String,
       sendQueue: ConcurrentLinkedQueue[String],
       outStream: OutputStreams.Streams,
-      receivedMessage: String => Unit,
-      isComEnabled: Boolean
+      receivedMessage: String => Unit
   ): Resource[IO, Unit] = {
     Resource.pure[IO, Unit] {
+      scribe.debug(s"Started processUntilStop")
       while (!stopSignal.get()) {
         sendAll(sendQueue, pageInstance, intf)
         val jsResponse = fetchMessages(pageInstance, intf)
         streamWriter(jsResponse, outStream, Some(receivedMessage))
         IO.sleep(100.milliseconds)
       }
+      scribe.debug(s"Stop processUntilStop")
     }
   }
 
@@ -71,8 +74,11 @@ object ResourcesFactory {
       intf: String
   ): Resource[IO, Boolean] = {
     Resource.pure[IO, Boolean] {
-      scribe.debug(s"Page instance is ${pageInstance.hashCode()}")
-      pageInstance.evaluate(s"!!$intf;").asInstanceOf[Boolean]
+      val status = pageInstance.evaluate(s"!!$intf;").asInstanceOf[Boolean]
+      scribe.debug(
+        s"Page instance is ${pageInstance.hashCode()} with status $status"
+      )
+      status
     }
 
   }
@@ -140,12 +146,23 @@ object ResourcesFactory {
   ): Unit = {
     val msg = sendQueue.poll()
     if (msg != null) {
-      scribe.debug(s"Sending message ${msg.take(100)}")
+      scribe.debug(s"Sending message")
       val script = s"$intf.send(arguments[0]);"
       val wrapper = s"function(arg) { $script }"
       pageInstance.evaluate(s"$wrapper", msg)
+      val pwDebug = sys.env.getOrElse("PWDEBUG", "0")
+      if (pwDebug == "1") {
+        pageInstance.pause()
+      }
       sendAll(sendQueue, pageInstance, intf)
     }
   }
   private def consumer[A](f: A => Unit): Consumer[A] = (v: A) => f(v)
+  private def logStackTrace(): Unit = {
+    try {
+      throw new Exception("Logging stack trace")
+    } catch {
+      case e: Exception => e.printStackTrace()
+    }
+  }
 }

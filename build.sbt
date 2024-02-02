@@ -41,7 +41,7 @@ lazy val root = (project in file("."))
       "com.google.jimfs" % "jimfs" % "1.2",
       "com.outr" %% "scribe" % "3.13.0",
       "org.typelevel" %% "cats-effect" % "3.5.2",
-      "org.scala-js" %% "scalajs-js-envs-test-kit" % "1.1.1" % Test,
+      "org.scala-js" %% "scalajs-js-envs-test-kit" % "1.4.0" % Test,
       "com.novocode" % "junit-interface" % "0.11" % Test
     ),
     releaseProcess := Seq[ReleaseStep](
@@ -65,7 +65,7 @@ lazy val root = (project in file("."))
     },
     // For all Sonatype accounts created on or after February 2021
     sonatypeCredentialHost := "s01.oss.sonatype.org",
-    Test / parallelExecution := false,
+    Test / parallelExecution := true,
     Test / publishArtifact := false,
     usePgpKeyHex("F7E440260BAE93EB4AD2723D6613CA76E011F638")
   )

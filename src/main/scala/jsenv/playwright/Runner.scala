@@ -102,7 +102,7 @@ trait Runner {
 
   def close(): Unit = {
     wantToClose.set(true)
-    scribe.info(s"Received stopSignal ${wantToClose.get()}")
+    scribe.debug(s"Received stopSignal ${wantToClose.get()}")
   }
 
   def getCaller: String = {

@@ -33,7 +33,6 @@ import java.util.concurrent.TimeUnit;
 public class DriverJar extends Driver {
     private static final String PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD";
     private static final String SELENIUM_REMOTE_URL = "SELENIUM_REMOTE_URL";
-    static final String PLAYWRIGHT_NODEJS_PATH = "PLAYWRIGHT_NODEJS_PATH";
     private final Path driverTempDir;
     private Path preinstalledNodePath;
 
@@ -68,7 +67,7 @@ public class DriverJar extends Driver {
             env.put(PLAYWRIGHT_NODEJS_PATH, preinstalledNodePath.toString());
         }
         extractDriverToTempDir();
-        logMessage("extracted driver from jar to " + driverPath());
+        logMessage("extracted driver from jar to " + driverDir());
         if (installBrowsers)
             installBrowsers(env);
     }
@@ -79,14 +78,14 @@ public class DriverJar extends Driver {
             skip = System.getenv(PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD);
         }
         if (skip != null && !"0".equals(skip) && !"false".equals(skip)) {
-            System.out.println("Skipping browsers download because `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD` env variable is set");
+            logMessage("Skipping browsers download because `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD` env variable is set");
             return;
         }
         if (env.get(SELENIUM_REMOTE_URL) != null || System.getenv(SELENIUM_REMOTE_URL) != null) {
             logMessage("Skipping browsers download because `SELENIUM_REMOTE_URL` env variable is set");
             return;
         }
-        Path driver = driverPath();
+        Path driver = driverDir();
         if (!Files.exists(driver)) {
             throw new RuntimeException("Failed to find driver: " + driver);
         }
@@ -119,7 +118,7 @@ public class DriverJar extends Driver {
     }
 
     public static URI getDriverResourceURI() throws URISyntaxException {
-//        ClassLoader classloader = Thread.currentThread().getContextClassLoader();
+        // ClassLoader classloader = Thread.currentThread().getContextClassLoader();
         ClassLoader classloader = DriverJar.class.getClassLoader();
         return classloader.getResource("driver/" + platformDir()).toURI();
     }
@@ -129,7 +128,7 @@ public class DriverJar extends Driver {
         URI uri = maybeExtractNestedJar(originalUri);
 
         // Create zip filesystem if loading from jar.
-        FileSystem fileSystem = "jar".equals(uri.getScheme()) ? initFileSystem(uri) : null;
+        try (FileSystem fileSystem = "jar".equals(uri.getScheme()) ? initFileSystem(uri) : null) {
             Path srcRoot = Paths.get(uri);
             // jar file system's .relativize gives wrong results when used with
             // spring-boot-maven-plugin, convert to the default filesystem to
@@ -159,8 +158,6 @@ public class DriverJar extends Driver {
                     throw new RuntimeException("Failed to extract driver from " + uri + ", full uri: " + originalUri, e);
                 }
             });
-        if (fileSystem != null) {
-            fileSystem.close();
         }
     }
 
@@ -175,8 +172,7 @@ public class DriverJar extends Driver {
         }
         String innerJar = String.join(JAR_URL_SEPARATOR, parts[0], parts[1]);
         URI jarUri = new URI(innerJar);
-        try {
-            FileSystem fs = FileSystems.newFileSystem(jarUri, Collections.emptyMap());
+        try (FileSystem fs = FileSystems.newFileSystem(jarUri, Collections.emptyMap())) {
             Path fromPath = Paths.get(jarUri);
             Path toPath = driverTempDir.resolve(fromPath.getFileName().toString());
             Files.copy(fromPath, toPath);
@@ -212,7 +208,7 @@ public class DriverJar extends Driver {
     }
 
     @Override
-    protected Path driverDir() {
+    public Path driverDir() {
         return driverTempDir;
     }
 }

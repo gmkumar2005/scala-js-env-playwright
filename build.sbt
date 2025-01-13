@@ -43,6 +43,8 @@ lazy val root = (project in file(".")).settings(
     "org.scala-js" %% "scalajs-js-envs-test-kit" % "1.4.0" % Test,
     "com.novocode" % "junit-interface" % "0.11" % Test
   ),
+  javacOptions += "-nowarn",
+  javacOptions -= "-Werror",
   releaseProcess := Seq[ReleaseStep](
     checkSnapshotDependencies,
     inquireVersions,

@@ -7,3 +7,5 @@ addSbtPlugin("org.scoverage" % "sbt-scoverage" % "2.2.2")
 addSbtPlugin("org.typelevel" % "sbt-typelevel" % sbtTypelevelVersion)
 addSbtPlugin("org.typelevel" % "sbt-typelevel-scalafix" % sbtTypelevelVersion)
 addSbtPlugin("org.typelevel" % "sbt-typelevel-site" % sbtTypelevelVersion)
+
+addSbtPlugin("ch.epfl.scala" % "sbt-bloop" % "2.0.6")

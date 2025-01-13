@@ -14,12 +14,14 @@ class CERun(
     override val headless: Boolean,
     override val pwConfig: Config,
     override val runConfig: RunConfig,
-    override val input: Seq[Input]
+    override val input: Seq[Input],
+    override val launchOptions: List[String],
+    override val additionalLaunchOptions: List[String]
 ) extends JSRun
     with Runner {
   scribe.debug(s"Creating CERun for $browserName")
   lazy val future: Future[Unit] =
-    jsRunPrg(browserName, headless, isComEnabled = false, None)
+    jsRunPrg(browserName, headless, isComEnabled = false, pwLaunchOptions)
       .use(_ => IO.unit)
       .unsafeToFuture()
 

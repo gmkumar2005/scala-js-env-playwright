@@ -2,6 +2,7 @@ package jsenv.playwright
 
 import cats.effect.IO
 import cats.effect.Resource
+import com.microsoft.playwright.BrowserType
 import com.microsoft.playwright.BrowserType.LaunchOptions
 import jsenv.playwright.PWEnv.Config
 import jsenv.playwright.PageFactory._
@@ -12,6 +13,7 @@ import org.scalajs.jsenv.RunConfig
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.concurrent.duration.DurationInt
+import scala.jdk.CollectionConverters.seqAsJavaListConverter
 
 trait Runner {
   val browserName: String = "" // or provide actual values
@@ -19,13 +21,15 @@ trait Runner {
   val pwConfig: Config = Config() // or provide actual values
   val runConfig: RunConfig = RunConfig() // or provide actual values
   val input: Seq[Input] = Seq.empty // or provide actual values
+  val launchOptions: List[String] = Nil
+  val additionalLaunchOptions: List[String] = Nil
 
   // enableCom is false for CERun and true for CEComRun
   protected val enableCom = false
   protected val intf = "this.scalajsPlayWrightInternalInterface"
   protected val sendQueue = new ConcurrentLinkedQueue[String]
   // receivedMessage is called only from JSComRun. Hence its implementation is empty in CERun
-  protected  def receivedMessage(msg: String): Unit
+  protected def receivedMessage(msg: String): Unit
   var wantToClose = new AtomicBoolean(false)
   // List of programs
   // 1. isInterfaceUp()
@@ -47,7 +51,7 @@ trait Runner {
       browserName: String,
       headless: Boolean,
       isComEnabled: Boolean,
-      launchOptions: Option[LaunchOptions]
+      launchOptions: LaunchOptions
   ): Resource[IO, Unit] = for {
     _ <- Resource.pure(
       scribe.info(
@@ -122,6 +126,29 @@ trait Runner {
       case e: Exception => e.printStackTrace()
     }
   }
+
+  protected lazy val pwLaunchOptions =
+    browserName.toLowerCase() match {
+      case "chromium" | "chrome" =>
+        new BrowserType.LaunchOptions().setArgs(
+          if (launchOptions.isEmpty)
+            (PWEnv.chromeLaunchOptions ++ additionalLaunchOptions).asJava
+          else (launchOptions ++ additionalLaunchOptions).asJava
+        )
+      case "firefox" =>
+        new BrowserType.LaunchOptions().setArgs(
+          if (launchOptions.isEmpty)
+            (PWEnv.firefoxLaunchOptions ++ additionalLaunchOptions).asJava
+          else (launchOptions ++ additionalLaunchOptions).asJava
+        )
+      case "webkit" =>
+        new BrowserType.LaunchOptions().setArgs(
+          if (launchOptions.isEmpty)
+            (PWEnv.webkitLaunchOptions ++ additionalLaunchOptions).asJava
+          else (launchOptions ++ additionalLaunchOptions).asJava
+        )
+      case _ => throw new IllegalArgumentException("Invalid browser type")
+    }
 
 }
 

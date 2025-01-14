@@ -8,7 +8,6 @@ import com.microsoft.playwright.BrowserType.LaunchOptions
 import com.microsoft.playwright.Page
 import com.microsoft.playwright.Playwright
 
-import scala.jdk.CollectionConverters.seqAsJavaListConverter
 object PageFactory {
   def pageBuilder(browser: Browser): Resource[IO, Page] = {
     Resource.make(IO {
@@ -22,7 +21,7 @@ object PageFactory {
       playwright: Playwright,
       browserName: String,
       headless: Boolean,
-      launchOptions: Option[LaunchOptions] = None
+      launchOptions: LaunchOptions
   ): Resource[IO, Browser] =
     Resource.make(IO {
 
@@ -35,47 +34,11 @@ object PageFactory {
           playwright.webkit()
         case _ => throw new IllegalArgumentException("Invalid browser type")
       }
-      launchOptions match {
-        case Some(launchOptions) =>
-          browserType.launch(launchOptions.setHeadless(headless))
-        case None =>
-          val launchOptions = browserName.toLowerCase match {
-            case "chromium" | "chrome" =>
-              new BrowserType.LaunchOptions().setArgs(
-                List(
-                  "--disable-extensions",
-                  "--disable-web-security",
-                  "--allow-running-insecure-content",
-                  "--disable-site-isolation-trials",
-                  "--allow-file-access-from-files",
-                  "--disable-gpu"
-                ).asJava
-              )
-            case "firefox" =>
-              new BrowserType.LaunchOptions().setArgs(
-                List(
-                  "--disable-web-security"
-                ).asJava
-              )
-            case "webkit" =>
-              new BrowserType.LaunchOptions().setArgs(
-                List(
-                  "--disable-extensions",
-                  "--disable-web-security",
-                  "--allow-running-insecure-content",
-                  "--disable-site-isolation-trials",
-                  "--allow-file-access-from-files"
-                ).asJava
-              )
-            case _ => throw new IllegalArgumentException("Invalid browser type")
-          }
-          val browser = browserType.launch(launchOptions.setHeadless(headless))
-          scribe.info(
-            s"Creating browser ${browser.browserType().name()} version ${browser
-                .version()} with ${browser.hashCode()}"
-          )
-          browser
-      }
+      val browser = browserType.launch(launchOptions.setHeadless(headless))
+      scribe.info(
+        s"Creating browser ${browser.browserType().name()} version ${browser.version()} with ${browser.hashCode()}"
+      )
+      browser
     })(browser =>
       IO {
         scribe.debug(s"Closing browser with ${browser.hashCode()}")
@@ -95,7 +58,7 @@ object PageFactory {
   def createPage(
       browserName: String,
       headless: Boolean,
-      launchOptions: Option[LaunchOptions]
+      launchOptions: LaunchOptions
   ): Resource[IO, Page] =
     for {
       playwright <- playWrightBuilder

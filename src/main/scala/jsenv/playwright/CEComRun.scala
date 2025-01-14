@@ -16,6 +16,8 @@ class CEComRun(
     override val pwConfig: Config,
     override val runConfig: RunConfig,
     override val input: Seq[Input],
+    override val launchOptions: List[String],
+    override val additionalLaunchOptions: List[String],
     onMessage: String => Unit
 ) extends JSComRun
     with Runner {
@@ -27,7 +29,7 @@ class CEComRun(
   override protected def receivedMessage(msg: String): Unit = onMessage(msg)
 
   lazy val future: Future[Unit] =
-    jsRunPrg(browserName, headless, isComEnabled = true, None)
+    jsRunPrg(browserName, headless, isComEnabled = true, pwLaunchOptions)
       .use(_ => IO.unit)
       .unsafeToFuture()
 

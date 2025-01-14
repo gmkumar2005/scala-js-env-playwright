@@ -9,12 +9,32 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import scala.util.control.NonFatal
 
+/**
+ * Playwright JS environment
+ *
+ * @param browserName
+ *   browser name, options are "chromium", "chrome", "firefox", "webkit", default is "chromium"
+ * @param headless
+ *   headless mode, default is true
+ * @param showLogs
+ *   show logs, default is false
+ * @param debug
+ *   debug mode, default is false
+ * @param pwConfig
+ *   Playwright configuration
+ * @param launchOptions
+ *   override launch options, if not provided default launch options are used
+ * @param additionalLaunchOptions
+ *   additional launch options (added to (default) launch options)
+ */
 class PWEnv(
     browserName: String = "chromium",
     headless: Boolean = true,
     showLogs: Boolean = false,
     debug: Boolean = false,
-    pwConfig: Config = Config()
+    pwConfig: Config = Config(),
+    launchOptions: List[String] = Nil,
+    additionalLaunchOptions: List[String] = Nil
 ) extends JSEnv {
 
   private lazy val validator = {
@@ -27,7 +47,14 @@ class PWEnv(
   override def start(input: Seq[Input], runConfig: RunConfig): JSRun = {
     try {
       validator.validate(runConfig)
-      new CERun(browserName, headless, pwConfig, runConfig, input)
+      new CERun(
+        browserName,
+        headless,
+        pwConfig,
+        runConfig,
+        input,
+        launchOptions,
+        additionalLaunchOptions)
     } catch {
       case ve: java.lang.IllegalArgumentException =>
         scribe.error(s"CEEnv.startWithCom failed with throw ve $ve")
@@ -51,6 +78,8 @@ class PWEnv(
         pwConfig,
         runConfig,
         input,
+        launchOptions,
+        additionalLaunchOptions,
         onMessage
       )
     } catch {
@@ -66,12 +95,10 @@ class PWEnv(
 }
 
 object PWEnv {
-  final class Config private (val materialization: Config.Materialization) {
+  case class Config(
+      materialization: Config.Materialization = Config.Materialization.Temp
+  ) {
     import Config.Materialization
-
-    private def this() = this(
-      materialization = Config.Materialization.Temp
-    )
 
     /**
      * Materializes purely virtual files into a temp directory.
@@ -131,16 +158,9 @@ object PWEnv {
 
     def withMaterialization(materialization: Materialization): Config =
       copy(materialization = materialization)
-
-    private def copy(
-        materialization: Config.Materialization = materialization
-    ): Config = {
-      new Config(materialization)
-    }
   }
 
   object Config {
-    def apply(): Config = new Config()
 
     abstract class Materialization private ()
     object Materialization {
@@ -153,4 +173,23 @@ object PWEnv {
       }
     }
   }
+
+  val chromeLaunchOptions = List(
+    "--disable-extensions",
+    "--disable-web-security",
+    "--allow-running-insecure-content",
+    "--disable-site-isolation-trials",
+    "--allow-file-access-from-files",
+    "--disable-gpu"
+  )
+
+  val firefoxLaunchOptions = List("--disable-web-security")
+
+  val webkitLaunchOptions = List(
+    "--disable-extensions",
+    "--disable-web-security",
+    "--allow-running-insecure-content",
+    "--disable-site-isolation-trials",
+    "--allow-file-access-from-files"
+  )
 }

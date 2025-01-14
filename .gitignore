@@ -19,6 +19,7 @@ project/plugins/project/
 .idea
 .metals
 .lh
+.bloop
 .bsp
 .vscode
 .DS_Store

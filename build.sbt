@@ -1,5 +1,8 @@
 import sbtrelease.ReleasePlugin.autoImport.ReleaseTransformations.*
+import sbtrelease.ReleaseStateTransformations.{checkSnapshotDependencies, inquireVersions, runClean}
 import xerial.sbt.Sonatype.*
+
+ThisBuild / sonatypeCredentialHost := sonatypeCentralHost
 organization := "io.github.gmkumar2005"
 organizationName := "io.github.gmkumar2005"
 scalaVersion := "2.12.20"
@@ -53,19 +56,27 @@ lazy val root = (project in file(".")).settings(
     setReleaseVersion,
     commitReleaseVersion,
     tagRelease,
-    ReleaseStep(action = Command.process("publishSigned", _)),
+    ReleaseStep(action = st => Command.process("publishSigned", st, _ => ())),
     setNextVersion,
     commitNextVersion
   ),
-  publishTo := {
-    val nexus = "https://s01.oss.sonatype.org/"
-    if (isSnapshot.value)
-      Some("snapshots" at nexus + "content/repositories/snapshots")
-    else
-      Some("releases" at nexus + "service/local/staging/deploy/maven2")
-  },
+  publishMavenStyle := true,
+  publishTo := sonatypePublishToBundle.value,
+  // publishTo := {
+  //   val nexus = "https://s01.oss.sonatype.org/"
+  //   if (isSnapshot.value)
+  //     Some("snapshots" at nexus + "content/repositories/snapshots")
+  //   else
+  //     Some("releases" at nexus + "service/local/staging/deploy/maven2")
+  // },
+//  credentials += Credentials(
+//    "Sonatype Nexus Repository Manager",
+//    "s01.oss.sonatype.org",
+//    sys.env("SONATYPE_USERNAME"),
+//    sys.env("SONATYPE_PASSWORD")),
+
   // For all Sonatype accounts created on or after February 2021
-  sonatypeCredentialHost := "s01.oss.sonatype.org",
+  // sonatypeCredentialHost := "s01.oss.sonatype.org",
   Test / parallelExecution := true,
   Test / publishArtifact := false,
   usePgpKeyHex("F7E440260BAE93EB4AD2723D6613CA76E011F638")

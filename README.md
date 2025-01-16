@@ -39,11 +39,11 @@ libraryDependencies += "com.google.guava" % "guava" % "33.0.0-jre"
 ## Compatibility notes
 ### Scala versions
 * This library can be used with any scala version 2.x and 3.x
-* This project is compiled with scala 2.12.18
+* This project is compiled with scala 2.12.20
 ### sbt versions
 * This library can be used with any sbt version 1.x 
 ### Playwright versions
-* This library can be used with playwright version 1.40.0 `"com.microsoft.playwright" % "playwright" % "1.40.0"`
+* This library can be used with playwright version 1.49.0 `"com.microsoft.playwright" % "playwright" % "1.49.0"`
 ### JDK versions
 * This library is tested on JDK11 and JDK21 
 
@@ -53,6 +53,51 @@ jsEnv := new jsenv.playwright.PWEnv(
   browserName = "chrome",
   headless = true,
   showLogs = false,
+)
+```
+
+## Launch options
+
+The launch options are used to enable/disable the browser features. They can be overridden via the launchOptions parameter or extended via the additionalLaunchOptions parameter.
+
+When not passing launchOptions, default launch options are as follows:
+
+### Chrome/chromium
+```scala
+jsEnv := new jsenv.playwright.PWEnv(
+  browserName = "chrome",
+  launchOptions = List(
+      "--disable-extensions", 
+      "--disable-web-security", 
+      "--allow-running-insecure-content", 
+      "--disable-site-isolation-trials", 
+      "--allow-file-access-from-files", 
+      "--disable-gpu"
+    )
+)
+```
+
+### Firefox
+```scala
+jsEnv := new jsenv.playwright.PWEnv(
+  browserName = "firefox",
+  launchOptions = List(
+      "--disable-web-security"
+    )
+)
+```
+
+### Webkit
+```scala
+jsEnv := new jsenv.playwright.PWEnv(
+  browserName = "webkit",
+  launchOptions = List(
+      "--disable-extensions", 
+      "--disable-web-security", 
+      "--allow-running-insecure-content", 
+      "--disable-site-isolation-trials", 
+      "--allow-file-access-from-files"
+    )
 )
 ```
 

@@ -45,7 +45,7 @@ libraryDependencies += "com.google.guava" % "guava" % "33.0.0-jre"
 ### Playwright versions
 * This library can be used with playwright version 1.49.0 `"com.microsoft.playwright" % "playwright" % "1.49.0"`
 ### JDK versions
-* This library is tested on JDK11 and JDK21 
+* This library is tested on JDK21 
 
 ## Default configuration
 ```scala

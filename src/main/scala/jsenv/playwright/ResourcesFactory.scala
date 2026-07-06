@@ -128,9 +128,9 @@ object ResourcesFactory {
         msgs.forEach(consumer(f))
       case None => scribe.debug("No onMessage function")
     }
-    data.forEach(outStream.out.println _)
-    error.forEach(outStream.out.println _)
-    consoleError.forEach(outStream.out.println _)
+    data.forEach((line: String) => outStream.out.println(line))
+    error.forEach((line: String) => outStream.out.println(line))
+    consoleError.forEach((line: String) => outStream.out.println(line))
 
     if (!error.isEmpty) {
       val errList = error.toArray(Array[String]()).toList

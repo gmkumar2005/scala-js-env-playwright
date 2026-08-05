@@ -7,6 +7,7 @@ import com.microsoft.playwright.BrowserType
 import com.microsoft.playwright.BrowserType.LaunchOptions
 import com.microsoft.playwright.Page
 import com.microsoft.playwright.Playwright
+import jsenv.playwright.BrowserName._
 
 object PageFactory {
   def pageBuilder(browser: Browser): Resource[IO, Page] = {
@@ -19,22 +20,30 @@ object PageFactory {
 
   private def browserBuilder(
       playwright: Playwright,
-      browserName: String,
+      browserName: BrowserName,
       headless: Boolean,
       launchOptions: LaunchOptions
   ): Resource[IO, Browser] =
     Resource.make(IO {
-
-      val browserType: BrowserType = browserName.toLowerCase match {
-        case "chromium" | "chrome" =>
+      val browserType: BrowserType = browserName match {
+        case Chrome | Chromium | Edge =>
           playwright.chromium()
-        case "firefox" =>
+        case Firefox =>
           playwright.firefox()
-        case "webkit" =>
+        case Webkit =>
           playwright.webkit()
-        case _ => throw new IllegalArgumentException("Invalid browser type")
       }
-      val browser = browserType.launch(launchOptions.setHeadless(headless))
+
+      val options = launchOptions.setHeadless(headless)
+      // set channel for chromium browsers
+      // which aren't installed by default
+      // by playwright:
+      // https://playwright.dev/java/docs/browsers#google-chrome--microsoft-edge
+      if(browserName == Edge) options.setChannel("msedge")
+      if(browserName == Chrome) options.setChannel("chrome")
+
+      val browser = browserType.launch(options)
+
       scribe.info(
         s"Creating browser ${browser.browserType().name()} version ${browser.version()} with ${browser.hashCode()}"
       )
@@ -56,7 +65,7 @@ object PageFactory {
       })
 
   def createPage(
-      browserName: String,
+      browserName: BrowserName,
       headless: Boolean,
       launchOptions: LaunchOptions
   ): Resource[IO, Page] =

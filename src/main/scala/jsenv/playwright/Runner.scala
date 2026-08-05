@@ -1,14 +1,13 @@
 package jsenv.playwright
 
-import cats.effect.IO
-import cats.effect.Resource
+import cats.effect.{IO, Resource}
 import com.microsoft.playwright.BrowserType
 import com.microsoft.playwright.BrowserType.LaunchOptions
+import jsenv.playwright.BrowserName.{Chrome, Chromium, Edge, Firefox, Webkit}
 import jsenv.playwright.PWEnv.Config
 import jsenv.playwright.PageFactory._
 import jsenv.playwright.ResourcesFactory._
-import org.scalajs.jsenv.Input
-import org.scalajs.jsenv.RunConfig
+import org.scalajs.jsenv.{Input, RunConfig}
 
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
@@ -16,7 +15,7 @@ import scala.concurrent.duration.DurationInt
 import scala.jdk.CollectionConverters.seqAsJavaListConverter
 
 trait Runner {
-  val browserName: String = "" // or provide actual values
+  val browserName: BrowserName// or provide actual values
   val headless: Boolean = false // or provide actual values
   val pwConfig: Config = Config() // or provide actual values
   val runConfig: RunConfig = RunConfig() // or provide actual values
@@ -30,7 +29,7 @@ trait Runner {
   protected val sendQueue = new ConcurrentLinkedQueue[String]
   // receivedMessage is called only from JSComRun. Hence its implementation is empty in CERun
   protected def receivedMessage(msg: String): Unit
-  var wantToClose = new AtomicBoolean(false)
+  private val wantToClose = new AtomicBoolean(false)
   // List of programs
   // 1. isInterfaceUp()
   // Create PW resource if not created. Create browser,context and page
@@ -48,7 +47,7 @@ trait Runner {
   // After future is completed close driver, streams, materializer
 
   def jsRunPrg(
-      browserName: String,
+      browserName: BrowserName,
       headless: Boolean,
       isComEnabled: Boolean,
       launchOptions: LaunchOptions
@@ -97,7 +96,7 @@ trait Runner {
    * This <strong>must</strong> be called to ensure the run's resources are released.
    *
    * Whether or not this makes the run fail or not is up to the implementation. However, in the
-   * following cases, calling [[close]] may not fail the run: <ul> <li>[[Future]] is already
+   * following cases, calling [[close]] may not fail the run: <ul> <li>[[scala.concurrent.Future]] is already
    * completed when [[close]] is called. <li>This is a [[CERun]] and the event loop inside the
    * VM is empty. </ul>
    *
@@ -109,48 +108,25 @@ trait Runner {
     scribe.debug(s"Received stopSignal ${wantToClose.get()}")
   }
 
-  def getCaller: String = {
-    val stackTraceElements = Thread.currentThread().getStackTrace
-    if (stackTraceElements.length > 5) {
-      val callerElement = stackTraceElements(5)
-      s"Caller class: ${callerElement.getClassName}, method: ${callerElement.getMethodName}"
-    } else {
-      "Could not determine caller."
-    }
-  }
-
-  def logStackTrace(): Unit = {
-    try {
-      throw new Exception("Logging stack trace")
-    } catch {
-      case e: Exception => e.printStackTrace()
-    }
-  }
-
-  protected lazy val pwLaunchOptions =
-    browserName.toLowerCase() match {
-      case "chromium" | "chrome" =>
+  protected lazy val pwLaunchOptions: LaunchOptions =
+    browserName match {
+      case Chrome | Chromium | Edge =>
         new BrowserType.LaunchOptions().setArgs(
           if (launchOptions.isEmpty)
             (PWEnv.chromeLaunchOptions ++ additionalLaunchOptions).asJava
           else (launchOptions ++ additionalLaunchOptions).asJava
         )
-      case "firefox" =>
+      case Firefox =>
         new BrowserType.LaunchOptions().setArgs(
           if (launchOptions.isEmpty)
             (PWEnv.firefoxLaunchOptions ++ additionalLaunchOptions).asJava
           else (launchOptions ++ additionalLaunchOptions).asJava
         )
-      case "webkit" =>
+      case Webkit =>
         new BrowserType.LaunchOptions().setArgs(
           if (launchOptions.isEmpty)
             (PWEnv.webkitLaunchOptions ++ additionalLaunchOptions).asJava
           else (launchOptions ++ additionalLaunchOptions).asJava
         )
-      case _ => throw new IllegalArgumentException("Invalid browser type")
     }
-
 }
-
-//private class WindowOnErrorException(errs: List[String])
-//  extends Exception(s"JS error: $errs")

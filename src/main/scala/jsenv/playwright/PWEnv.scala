@@ -1,5 +1,6 @@
 package jsenv.playwright
 
+import jsenv.playwright.BrowserName.Chromium
 import jsenv.playwright.PWEnv.Config
 import org.scalajs.jsenv._
 
@@ -28,7 +29,7 @@ import scala.util.control.NonFatal
  *   additional launch options (added to (default) launch options)
  */
 class PWEnv(
-    browserName: String = "chromium",
+    browserName: BrowserName = Chromium,
     headless: Boolean = true,
     showLogs: Boolean = false,
     debug: Boolean = false,

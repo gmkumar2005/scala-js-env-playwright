@@ -41,7 +41,6 @@ class PWEnv(
     RunConfig.Validator().supportsInheritIO().supportsOnOutputStream()
   }
   override val name: String = s"CEEnv with $browserName"
-  System.setProperty("playwright.driver.impl", "jsenv.DriverJar")
   CEUtils.setupLogger(showLogs, debug)
 
   override def start(input: Seq[Input], runConfig: RunConfig): JSRun = {
@@ -164,7 +163,7 @@ object PWEnv {
 
     abstract class Materialization private ()
     object Materialization {
-      final case object Temp extends Materialization
+      case object Temp extends Materialization
       final case class Server(contentDir: Path, webRoot: URL) extends Materialization {
         require(
           webRoot.getPath.endsWith("/"),

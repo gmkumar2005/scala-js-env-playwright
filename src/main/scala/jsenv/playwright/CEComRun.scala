@@ -35,4 +35,4 @@ class CEComRun(
 
 }
 
-private class WindowOnErrorException(errs: List[String]) extends Exception(s"JS error: $errs")
+private[playwright] class WindowOnErrorException(errs: List[String]) extends Exception(s"JS error: $errs")

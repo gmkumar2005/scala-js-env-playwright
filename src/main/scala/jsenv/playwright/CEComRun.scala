@@ -11,7 +11,7 @@ import scala.concurrent._
 
 // browserName, headless, pwConfig, runConfig, input, onMessage
 class CEComRun(
-    override val browserName: String,
+    override val browserName: BrowserName,
     override val headless: Boolean,
     override val pwConfig: Config,
     override val runConfig: RunConfig,

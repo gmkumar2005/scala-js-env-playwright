@@ -10,7 +10,7 @@ import org.scalajs.jsenv.RunConfig
 import scala.concurrent._
 
 class CERun(
-    override val browserName: String,
+    override val browserName: BrowserName,
     override val headless: Boolean,
     override val pwConfig: Config,
     override val runConfig: RunConfig,
